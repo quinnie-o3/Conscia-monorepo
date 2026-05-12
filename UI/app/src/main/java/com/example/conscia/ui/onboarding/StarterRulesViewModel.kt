@@ -1,0 +1,111 @@
+package com.example.conscia.ui.onboarding
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.conscia.data.AppDatabase
+import com.example.conscia.data.AppRepository
+import com.example.conscia.data.TrackedAppsDataStore
+import com.example.conscia.data.rule.RuleEntity
+import com.example.conscia.data.rule.RuleRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+data class StarterRuleDraft(
+    val packageName: String,
+    val appName: String,
+    val intentionLabel: String = ""
+)
+
+data class StarterRulesUiState(
+    val isLoading: Boolean = true,
+    val isSaving: Boolean = false,
+    val drafts: List<StarterRuleDraft> = emptyList(),
+    val errorMessage: String? = null
+) {
+    val hasSelectedApps: Boolean = drafts.isNotEmpty()
+    val canContinue: Boolean = drafts.isNotEmpty() && drafts.all { it.intentionLabel.isNotBlank() } && !isSaving
+}
+
+class StarterRulesViewModel(application: Application) : AndroidViewModel(application) {
+    private val appRepository = AppRepository(application)
+    private val dataStore = TrackedAppsDataStore(application)
+    private val ruleRepository = RuleRepository(AppDatabase.getDatabase(application).ruleDao())
+
+    private val _uiState = MutableStateFlow(StarterRulesUiState())
+    val uiState: StateFlow<StarterRulesUiState> = _uiState.asStateFlow()
+
+    init {
+        loadDrafts()
+    }
+
+    private fun loadDrafts() {
+        viewModelScope.launch {
+            val selectedPackages = dataStore.selectedPackagesFlow.first()
+            val installedApps = appRepository.getInstalledApps()
+            val drafts = installedApps
+                .filter { it.packageName in selectedPackages }
+                .map { StarterRuleDraft(packageName = it.packageName, appName = it.appName) }
+
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    drafts = drafts,
+                    errorMessage = null
+                )
+            }
+        }
+    }
+
+    fun onIntentionSelected(packageName: String, intentionLabel: String) {
+        _uiState.update { state ->
+            state.copy(
+                drafts = state.drafts.map { draft ->
+                    if (draft.packageName == packageName) {
+                        draft.copy(intentionLabel = intentionLabel)
+                    } else {
+                        draft
+                    }
+                },
+                errorMessage = null
+            )
+        }
+    }
+
+    fun saveStarterRules(onComplete: () -> Unit) {
+        val drafts = _uiState.value.drafts
+        if (drafts.isEmpty()) {
+            onComplete()
+            return
+        }
+
+        if (drafts.any { it.intentionLabel.isBlank() }) {
+            _uiState.update { it.copy(errorMessage = "Choose a reason for every selected app.") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true, errorMessage = null) }
+
+            drafts.forEach { draft ->
+                ruleRepository.upsertRuleByPackage(
+                    RuleEntity(
+                        packageName = draft.packageName,
+                        appName = draft.appName,
+                        intentionLabel = draft.intentionLabel,
+                        dailyLimitMinutes = 15,
+                        trackingEnabled = true,
+                        warningEnabled = true
+                    )
+                )
+            }
+
+            _uiState.update { it.copy(isSaving = false) }
+            onComplete()
+        }
+    }
+}
