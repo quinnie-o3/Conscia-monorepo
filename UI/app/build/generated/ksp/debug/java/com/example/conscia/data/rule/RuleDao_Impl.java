@@ -9,6 +9,7 @@ import androidx.room.EntityDeletionOrUpdateAdapter;
 import androidx.room.EntityInsertionAdapter;
 import androidx.room.RoomDatabase;
 import androidx.room.RoomSQLiteQuery;
+import androidx.room.SharedSQLiteStatement;
 import androidx.room.util.CursorUtil;
 import androidx.room.util.DBUtil;
 import androidx.sqlite.db.SupportSQLiteStatement;
@@ -38,13 +39,15 @@ public final class RuleDao_Impl implements RuleDao {
 
   private final EntityDeletionOrUpdateAdapter<RuleEntity> __updateAdapterOfRuleEntity;
 
+  private final SharedSQLiteStatement __preparedStmtOfDeleteAllRules;
+
   public RuleDao_Impl(@NonNull final RoomDatabase __db) {
     this.__db = __db;
     this.__insertionAdapterOfRuleEntity = new EntityInsertionAdapter<RuleEntity>(__db) {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `rules` (`id`,`packageName`,`appName`,`intentionLabel`,`dailyLimitMinutes`,`trackingEnabled`,`warningEnabled`,`createdAt`,`updatedAt`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `rules` (`id`,`packageName`,`appName`,`intentionLabel`,`dailyLimitMinutes`,`trackingEnabled`,`warningEnabled`,`extensionMinutes`,`extensionCount`,`lastExtensionDate`,`createdAt`,`updatedAt`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -59,8 +62,11 @@ public final class RuleDao_Impl implements RuleDao {
         statement.bindLong(6, _tmp);
         final int _tmp_1 = entity.getWarningEnabled() ? 1 : 0;
         statement.bindLong(7, _tmp_1);
-        statement.bindLong(8, entity.getCreatedAt());
-        statement.bindLong(9, entity.getUpdatedAt());
+        statement.bindLong(8, entity.getExtensionMinutes());
+        statement.bindLong(9, entity.getExtensionCount());
+        statement.bindString(10, entity.getLastExtensionDate());
+        statement.bindLong(11, entity.getCreatedAt());
+        statement.bindLong(12, entity.getUpdatedAt());
       }
     };
     this.__deletionAdapterOfRuleEntity = new EntityDeletionOrUpdateAdapter<RuleEntity>(__db) {
@@ -80,7 +86,7 @@ public final class RuleDao_Impl implements RuleDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "UPDATE OR ABORT `rules` SET `id` = ?,`packageName` = ?,`appName` = ?,`intentionLabel` = ?,`dailyLimitMinutes` = ?,`trackingEnabled` = ?,`warningEnabled` = ?,`createdAt` = ?,`updatedAt` = ? WHERE `id` = ?";
+        return "UPDATE OR ABORT `rules` SET `id` = ?,`packageName` = ?,`appName` = ?,`intentionLabel` = ?,`dailyLimitMinutes` = ?,`trackingEnabled` = ?,`warningEnabled` = ?,`extensionMinutes` = ?,`extensionCount` = ?,`lastExtensionDate` = ?,`createdAt` = ?,`updatedAt` = ? WHERE `id` = ?";
       }
 
       @Override
@@ -95,9 +101,20 @@ public final class RuleDao_Impl implements RuleDao {
         statement.bindLong(6, _tmp);
         final int _tmp_1 = entity.getWarningEnabled() ? 1 : 0;
         statement.bindLong(7, _tmp_1);
-        statement.bindLong(8, entity.getCreatedAt());
-        statement.bindLong(9, entity.getUpdatedAt());
-        statement.bindLong(10, entity.getId());
+        statement.bindLong(8, entity.getExtensionMinutes());
+        statement.bindLong(9, entity.getExtensionCount());
+        statement.bindString(10, entity.getLastExtensionDate());
+        statement.bindLong(11, entity.getCreatedAt());
+        statement.bindLong(12, entity.getUpdatedAt());
+        statement.bindLong(13, entity.getId());
+      }
+    };
+    this.__preparedStmtOfDeleteAllRules = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "DELETE FROM rules";
+        return _query;
       }
     };
   }
@@ -157,8 +174,31 @@ public final class RuleDao_Impl implements RuleDao {
   }
 
   @Override
+  public Object deleteAllRules(final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfDeleteAllRules.acquire();
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfDeleteAllRules.release(_stmt);
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
   public Flow<List<RuleEntity>> getAllRules() {
-    final String _sql = "SELECT * FROM rules ORDER BY createdAt DESC";
+    final String _sql = "SELECT * FROM rules ORDER BY updatedAt DESC";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
     return CoroutinesRoom.createFlow(__db, false, new String[] {"rules"}, new Callable<List<RuleEntity>>() {
       @Override
@@ -173,6 +213,9 @@ public final class RuleDao_Impl implements RuleDao {
           final int _cursorIndexOfDailyLimitMinutes = CursorUtil.getColumnIndexOrThrow(_cursor, "dailyLimitMinutes");
           final int _cursorIndexOfTrackingEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "trackingEnabled");
           final int _cursorIndexOfWarningEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "warningEnabled");
+          final int _cursorIndexOfExtensionMinutes = CursorUtil.getColumnIndexOrThrow(_cursor, "extensionMinutes");
+          final int _cursorIndexOfExtensionCount = CursorUtil.getColumnIndexOrThrow(_cursor, "extensionCount");
+          final int _cursorIndexOfLastExtensionDate = CursorUtil.getColumnIndexOrThrow(_cursor, "lastExtensionDate");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
           final List<RuleEntity> _result = new ArrayList<RuleEntity>(_cursor.getCount());
@@ -196,11 +239,17 @@ public final class RuleDao_Impl implements RuleDao {
             final int _tmp_1;
             _tmp_1 = _cursor.getInt(_cursorIndexOfWarningEnabled);
             _tmpWarningEnabled = _tmp_1 != 0;
+            final int _tmpExtensionMinutes;
+            _tmpExtensionMinutes = _cursor.getInt(_cursorIndexOfExtensionMinutes);
+            final int _tmpExtensionCount;
+            _tmpExtensionCount = _cursor.getInt(_cursorIndexOfExtensionCount);
+            final String _tmpLastExtensionDate;
+            _tmpLastExtensionDate = _cursor.getString(_cursorIndexOfLastExtensionDate);
             final long _tmpCreatedAt;
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            _item = new RuleEntity(_tmpId,_tmpPackageName,_tmpAppName,_tmpIntentionLabel,_tmpDailyLimitMinutes,_tmpTrackingEnabled,_tmpWarningEnabled,_tmpCreatedAt,_tmpUpdatedAt);
+            _item = new RuleEntity(_tmpId,_tmpPackageName,_tmpAppName,_tmpIntentionLabel,_tmpDailyLimitMinutes,_tmpTrackingEnabled,_tmpWarningEnabled,_tmpExtensionMinutes,_tmpExtensionCount,_tmpLastExtensionDate,_tmpCreatedAt,_tmpUpdatedAt);
             _result.add(_item);
           }
           return _result;
@@ -236,6 +285,9 @@ public final class RuleDao_Impl implements RuleDao {
           final int _cursorIndexOfDailyLimitMinutes = CursorUtil.getColumnIndexOrThrow(_cursor, "dailyLimitMinutes");
           final int _cursorIndexOfTrackingEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "trackingEnabled");
           final int _cursorIndexOfWarningEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "warningEnabled");
+          final int _cursorIndexOfExtensionMinutes = CursorUtil.getColumnIndexOrThrow(_cursor, "extensionMinutes");
+          final int _cursorIndexOfExtensionCount = CursorUtil.getColumnIndexOrThrow(_cursor, "extensionCount");
+          final int _cursorIndexOfLastExtensionDate = CursorUtil.getColumnIndexOrThrow(_cursor, "lastExtensionDate");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
           final RuleEntity _result;
@@ -258,11 +310,17 @@ public final class RuleDao_Impl implements RuleDao {
             final int _tmp_1;
             _tmp_1 = _cursor.getInt(_cursorIndexOfWarningEnabled);
             _tmpWarningEnabled = _tmp_1 != 0;
+            final int _tmpExtensionMinutes;
+            _tmpExtensionMinutes = _cursor.getInt(_cursorIndexOfExtensionMinutes);
+            final int _tmpExtensionCount;
+            _tmpExtensionCount = _cursor.getInt(_cursorIndexOfExtensionCount);
+            final String _tmpLastExtensionDate;
+            _tmpLastExtensionDate = _cursor.getString(_cursorIndexOfLastExtensionDate);
             final long _tmpCreatedAt;
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            _result = new RuleEntity(_tmpId,_tmpPackageName,_tmpAppName,_tmpIntentionLabel,_tmpDailyLimitMinutes,_tmpTrackingEnabled,_tmpWarningEnabled,_tmpCreatedAt,_tmpUpdatedAt);
+            _result = new RuleEntity(_tmpId,_tmpPackageName,_tmpAppName,_tmpIntentionLabel,_tmpDailyLimitMinutes,_tmpTrackingEnabled,_tmpWarningEnabled,_tmpExtensionMinutes,_tmpExtensionCount,_tmpLastExtensionDate,_tmpCreatedAt,_tmpUpdatedAt);
           } else {
             _result = null;
           }
@@ -278,7 +336,7 @@ public final class RuleDao_Impl implements RuleDao {
   @Override
   public Object getRuleByPackageName(final String packageName,
       final Continuation<? super RuleEntity> $completion) {
-    final String _sql = "SELECT * FROM rules WHERE packageName = ? LIMIT 1";
+    final String _sql = "SELECT * FROM rules WHERE packageName = ?";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
     int _argIndex = 1;
     _statement.bindString(_argIndex, packageName);
@@ -296,6 +354,9 @@ public final class RuleDao_Impl implements RuleDao {
           final int _cursorIndexOfDailyLimitMinutes = CursorUtil.getColumnIndexOrThrow(_cursor, "dailyLimitMinutes");
           final int _cursorIndexOfTrackingEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "trackingEnabled");
           final int _cursorIndexOfWarningEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "warningEnabled");
+          final int _cursorIndexOfExtensionMinutes = CursorUtil.getColumnIndexOrThrow(_cursor, "extensionMinutes");
+          final int _cursorIndexOfExtensionCount = CursorUtil.getColumnIndexOrThrow(_cursor, "extensionCount");
+          final int _cursorIndexOfLastExtensionDate = CursorUtil.getColumnIndexOrThrow(_cursor, "lastExtensionDate");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
           final RuleEntity _result;
@@ -318,11 +379,17 @@ public final class RuleDao_Impl implements RuleDao {
             final int _tmp_1;
             _tmp_1 = _cursor.getInt(_cursorIndexOfWarningEnabled);
             _tmpWarningEnabled = _tmp_1 != 0;
+            final int _tmpExtensionMinutes;
+            _tmpExtensionMinutes = _cursor.getInt(_cursorIndexOfExtensionMinutes);
+            final int _tmpExtensionCount;
+            _tmpExtensionCount = _cursor.getInt(_cursorIndexOfExtensionCount);
+            final String _tmpLastExtensionDate;
+            _tmpLastExtensionDate = _cursor.getString(_cursorIndexOfLastExtensionDate);
             final long _tmpCreatedAt;
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            _result = new RuleEntity(_tmpId,_tmpPackageName,_tmpAppName,_tmpIntentionLabel,_tmpDailyLimitMinutes,_tmpTrackingEnabled,_tmpWarningEnabled,_tmpCreatedAt,_tmpUpdatedAt);
+            _result = new RuleEntity(_tmpId,_tmpPackageName,_tmpAppName,_tmpIntentionLabel,_tmpDailyLimitMinutes,_tmpTrackingEnabled,_tmpWarningEnabled,_tmpExtensionMinutes,_tmpExtensionCount,_tmpLastExtensionDate,_tmpCreatedAt,_tmpUpdatedAt);
           } else {
             _result = null;
           }

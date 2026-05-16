@@ -2,10 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import {
-  normalizeOptionalString,
-  resolveAnonymousUserId,
-} from '../../common/device-identity.util';
+import { normalizeOptionalString } from '../../common/device-identity.util';
+import { DeviceService } from '../device/device.service';
 import { TrackingRule } from './tracking-rule.schema';
 import { UpsertTrackingRuleDto } from './dto/upsert-tracking-rule.dto';
 
@@ -14,9 +12,10 @@ export class TrackingRuleService {
   constructor(
     @InjectModel(TrackingRule.name)
     private readonly trackingRuleModel: Model<TrackingRule>,
+    private readonly deviceService: DeviceService,
   ) {}
 
-  private buildIdentityFilter(
+  private buildAnonymousIdentityFilter(
     anonymousUserId: string | undefined,
     deviceId: string,
   ) {
@@ -32,16 +31,28 @@ export class TrackingRuleService {
     return filter;
   }
 
-  async upsert(dto: UpsertTrackingRuleDto) {
-    const anonymousUserId = resolveAnonymousUserId(
-      dto.anonymousUserId,
+  private buildUserIdentityFilter(userId: string, deviceId: string) {
+    return {
+      deviceId,
+      userId,
+    };
+  }
+
+  async upsert(userId: string, dto: UpsertTrackingRuleDto) {
+    const anonymousUserId =
+      await this.deviceService.resolveAnonymousUserIdForDevice(
+        dto.deviceId,
+      );
+
+    await this.deviceService.attachUser(
       dto.deviceId,
+      userId,
+      anonymousUserId,
     );
 
     return this.trackingRuleModel.findOneAndUpdate(
       {
-        anonymousUserId,
-        deviceId: dto.deviceId,
+        userId,
         packageName: dto.packageName,
       },
       {
@@ -54,7 +65,11 @@ export class TrackingRuleService {
           dailyLimitMinutes: dto.dailyLimitMinutes,
           packageName: dto.packageName,
           trackingEnabled: dto.trackingEnabled ?? true,
+          userId,
           warningEnabled: dto.warningEnabled ?? true,
+          extensionMinutes: dto.extensionMinutes ?? 0,
+          extensionCount: dto.extensionCount ?? 0,
+          lastExtensionDate: dto.lastExtensionDate,
         },
       },
       {
@@ -64,19 +79,19 @@ export class TrackingRuleService {
     );
   }
 
-  async findAll(_anonymousUserId: string | undefined, deviceId: string) {
+  async findAllForUser(userId: string, deviceId: string) {
     return this.trackingRuleModel
-      .find(this.buildIdentityFilter(_anonymousUserId, deviceId))
+      .find({ userId }) // Rules follow user, but we might still want to filter by device if needed
       .sort({ createdAt: -1 });
   }
 
-  async deleteOne(
-    _anonymousUserId: string | undefined,
+  async deleteOneForUser(
+    userId: string,
     deviceId: string,
     packageName: string,
   ) {
     return this.trackingRuleModel.deleteOne({
-      ...this.buildIdentityFilter(_anonymousUserId, deviceId),
+      userId,
       packageName,
     });
   }
@@ -85,8 +100,9 @@ export class TrackingRuleService {
     _anonymousUserId: string | undefined,
     deviceId: string,
   ) {
+    // This is mainly for anonymous checks if any, usually we protect with JwtAuthGuard
     return this.trackingRuleModel.find({
-      ...this.buildIdentityFilter(_anonymousUserId, deviceId),
+      deviceId,
       trackingEnabled: true,
     });
   }

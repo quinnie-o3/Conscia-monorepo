@@ -36,9 +36,9 @@ public final class AppDatabase_Impl extends AppDatabase {
     final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(1) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS `rules` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `packageName` TEXT NOT NULL, `appName` TEXT NOT NULL, `intentionLabel` TEXT NOT NULL, `dailyLimitMinutes` INTEGER NOT NULL, `trackingEnabled` INTEGER NOT NULL, `warningEnabled` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `rules` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `packageName` TEXT NOT NULL, `appName` TEXT NOT NULL, `intentionLabel` TEXT NOT NULL, `dailyLimitMinutes` INTEGER NOT NULL, `trackingEnabled` INTEGER NOT NULL, `warningEnabled` INTEGER NOT NULL, `extensionMinutes` INTEGER NOT NULL, `extensionCount` INTEGER NOT NULL, `lastExtensionDate` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '773170de0134d982bb1f262395013e0f')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4a10ac06ea9ace594755dfe1b04997a5')");
       }
 
       @Override
@@ -87,7 +87,7 @@ public final class AppDatabase_Impl extends AppDatabase {
       @NonNull
       public RoomOpenHelper.ValidationResult onValidateSchema(
           @NonNull final SupportSQLiteDatabase db) {
-        final HashMap<String, TableInfo.Column> _columnsRules = new HashMap<String, TableInfo.Column>(9);
+        final HashMap<String, TableInfo.Column> _columnsRules = new HashMap<String, TableInfo.Column>(12);
         _columnsRules.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsRules.put("packageName", new TableInfo.Column("packageName", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsRules.put("appName", new TableInfo.Column("appName", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
@@ -95,6 +95,9 @@ public final class AppDatabase_Impl extends AppDatabase {
         _columnsRules.put("dailyLimitMinutes", new TableInfo.Column("dailyLimitMinutes", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsRules.put("trackingEnabled", new TableInfo.Column("trackingEnabled", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsRules.put("warningEnabled", new TableInfo.Column("warningEnabled", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsRules.put("extensionMinutes", new TableInfo.Column("extensionMinutes", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsRules.put("extensionCount", new TableInfo.Column("extensionCount", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsRules.put("lastExtensionDate", new TableInfo.Column("lastExtensionDate", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsRules.put("createdAt", new TableInfo.Column("createdAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsRules.put("updatedAt", new TableInfo.Column("updatedAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         final HashSet<TableInfo.ForeignKey> _foreignKeysRules = new HashSet<TableInfo.ForeignKey>(0);
@@ -108,7 +111,7 @@ public final class AppDatabase_Impl extends AppDatabase {
         }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "773170de0134d982bb1f262395013e0f", "c47f588bf50879ffb8ee4bd6925804d1");
+    }, "4a10ac06ea9ace594755dfe1b04997a5", "bf0353f5239486379020daf821f646c4");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;

@@ -1,19 +1,20 @@
 package com.example.conscia.ui.onboarding
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.conscia.data.AppDatabase
 import com.example.conscia.data.AppRepository
 import com.example.conscia.data.TrackedAppsDataStore
+import com.example.conscia.data.remote.api.ConsciaApiService
 import com.example.conscia.data.rule.RuleEntity
 import com.example.conscia.data.rule.RuleRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class StarterRuleDraft(
     val packageName: String,
@@ -25,22 +26,28 @@ data class StarterRulesUiState(
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val drafts: List<StarterRuleDraft> = emptyList(),
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val availableIntentions: List<String> = emptyList(),
+    val isLoadingIntentions: Boolean = false
 ) {
     val hasSelectedApps: Boolean = drafts.isNotEmpty()
     val canContinue: Boolean = drafts.isNotEmpty() && drafts.all { it.intentionLabel.isNotBlank() } && !isSaving
 }
 
-class StarterRulesViewModel(application: Application) : AndroidViewModel(application) {
-    private val appRepository = AppRepository(application)
-    private val dataStore = TrackedAppsDataStore(application)
-    private val ruleRepository = RuleRepository(AppDatabase.getDatabase(application).ruleDao())
+@HiltViewModel
+class StarterRulesViewModel @Inject constructor(
+    private val appRepository: AppRepository,
+    private val dataStore: TrackedAppsDataStore,
+    private val ruleRepository: RuleRepository,
+    private val apiService: ConsciaApiService
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StarterRulesUiState())
     val uiState: StateFlow<StarterRulesUiState> = _uiState.asStateFlow()
 
     init {
         loadDrafts()
+        fetchIntentions()
     }
 
     private fun loadDrafts() {
@@ -57,6 +64,36 @@ class StarterRulesViewModel(application: Application) : AndroidViewModel(applica
                     drafts = drafts,
                     errorMessage = null
                 )
+            }
+        }
+    }
+
+    fun fetchIntentions() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingIntentions = true) }
+            try {
+                val response = apiService.getIntentions()
+                if (response.isSuccessful) {
+                    val intentions = response.body()?.data?.map { it.label } ?: emptyList()
+                    _uiState.update { it.copy(availableIntentions = intentions, isLoadingIntentions = false) }
+                } else {
+                    _uiState.update { it.copy(isLoadingIntentions = false) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoadingIntentions = false) }
+            }
+        }
+    }
+
+    fun createCustomIntention(label: String, forPackage: String) {
+        viewModelScope.launch {
+            try {
+                val response = apiService.createIntention(mapOf("label" to label))
+                if (response.isSuccessful) {
+                    fetchIntentions()
+                    onIntentionSelected(forPackage, label)
+                }
+            } catch (e: Exception) {
             }
         }
     }
@@ -97,7 +134,7 @@ class StarterRulesViewModel(application: Application) : AndroidViewModel(applica
                         packageName = draft.packageName,
                         appName = draft.appName,
                         intentionLabel = draft.intentionLabel,
-                        dailyLimitMinutes = 15,
+                        dailyLimitMinutes = 60, // Tăng lên 60 phút để tránh báo "vượt hạn mức" ngay lập tức
                         trackingEnabled = true,
                         warningEnabled = true
                     )

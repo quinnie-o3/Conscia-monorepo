@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.conscia.app-mergeDebugResources-71:/values-v30/values-v30.xml",
+            "outputFile": "com.example.conscia.app-mergeDebugResources-78:/values-v30/values-v30.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\Acer\\.gradle\\caches\\8.10.2\\transforms\\4a8ed4e0e2268b45fcf82001c15f3f82\\transformed\\jetified-material3-release\\res\\values-v30\\values-v30.xml",
+                    "source": "C:\\Users\\Acer\\.gradle\\caches\\8.10.2\\transforms\\d4c968e5dd8bed652561064f144ff21d\\transformed\\jetified-material3-release\\res\\values-v30\\values-v30.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

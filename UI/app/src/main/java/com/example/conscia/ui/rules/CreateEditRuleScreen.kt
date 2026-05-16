@@ -1,5 +1,6 @@
 package com.example.conscia.ui.rules
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -11,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -23,16 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-
-private val intentionSuggestions = listOf(
-    "Stay focused on work",
-    "Stay focused on study",
-    "Avoid mindless scrolling",
-    "Check updates without getting stuck",
-    "Use it intentionally to relax",
-    "Limit late-night usage"
-)
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -43,16 +36,18 @@ fun CreateEditRuleScreen(
     selectedAppPackageName: String = "",
     selectedAppName: String = "",
     onSelectedAppConsumed: () -> Unit = {},
-    viewModel: CreateEditRuleViewModel = viewModel()
+    viewModel: CreateEditRuleViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
-    var currentOptionStep by remember { mutableIntStateOf(0) } // 0 = Tracking, 1 = Warning, 2 = Done
+    var currentOptionStep by remember { mutableIntStateOf(0) }
+    var showCustomIntentionDialog by remember { mutableStateOf(false) }
+    var customIntentionText by remember { mutableStateOf("") }
 
     LaunchedEffect(ruleId) {
         if (ruleId != null && ruleId != -1L) {
             viewModel.loadRule(ruleId)
-            currentOptionStep = 2 // In edit mode, we show all options or assume steps are done
+            currentOptionStep = 2
         }
     }
 
@@ -67,6 +62,41 @@ fun CreateEditRuleScreen(
         if (uiState.saveSuccess) {
             onBackClick()
         }
+    }
+
+    if (showCustomIntentionDialog) {
+        AlertDialog(
+            onDismissRequest = { showCustomIntentionDialog = false },
+            title = { Text("New Reason") },
+            text = {
+                OutlinedTextField(
+                    value = customIntentionText,
+                    onValueChange = { customIntentionText = it },
+                    label = { Text("Enter your intention") },
+                    placeholder = { Text("e.g. Learning English") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (customIntentionText.isNotBlank()) {
+                            viewModel.createCustomIntention(customIntentionText)
+                            customIntentionText = ""
+                            showCustomIntentionDialog = false
+                        }
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomIntentionDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -135,32 +165,36 @@ fun CreateEditRuleScreen(
             // 2. Your intention
             val intentionError = !uiState.isIntentionValid && uiState.showErrors
             SectionTitle("Your intention", isError = intentionError)
+            
             OutlinedTextField(
                 value = uiState.intention,
                 onValueChange = { viewModel.onIntentionChanged(it) },
-                label = { Text("Why do you want to track this app?") },
+                label = { Text("Current Intention") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 isError = intentionError,
+                readOnly = true,
                 colors = TextFieldDefaults.colors(
                     focusedIndicatorColor = colorScheme.primary,
                     unfocusedIndicatorColor = colorScheme.outlineVariant,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
+                    focusedContainerColor = colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    unfocusedContainerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f),
                     errorContainerColor = Color.Transparent
                 )
             )
+
             Text(
-                text = "Quick suggestions",
+                text = "Choose a reason",
                 style = MaterialTheme.typography.labelLarge,
                 color = colorScheme.onSurfaceVariant
             )
+
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                intentionSuggestions.forEach { suggestion ->
+                uiState.availableIntentions.forEach { suggestion ->
                     FilterChip(
                         selected = uiState.intention == suggestion,
                         onClick = { viewModel.onIntentionChanged(suggestion) },
@@ -171,6 +205,21 @@ fun CreateEditRuleScreen(
                         )
                     )
                 }
+                
+                FilterChip(
+                    selected = false,
+                    onClick = { showCustomIntentionDialog = true },
+                    label = { 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Other reason -->")
+                            Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp).padding(start = 4.dp))
+                        }
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                        labelColor = colorScheme.onSecondaryContainer
+                    )
+                )
             }
 
             // 3. Daily limit
@@ -212,40 +261,14 @@ fun CreateEditRuleScreen(
 
             // 4. Options
             SectionTitle("Options")
-            if (!uiState.isEditMode && currentOptionStep < 2) {
-                // Stepper for new rules
-                if (currentOptionStep == 0) {
-                    OptionStepCard(
-                        title = "Enable tracking?",
-                        subtitle = "Track app usage to help manage your time",
-                        onDisable = { currentOptionStep = 1 },
-                        onEnable = {
-                            viewModel.onTrackingEnabledChanged(true)
-                            currentOptionStep = 1
-                        }
-                    )
-                } else {
-                    OptionStepCard(
-                        title = "Enable warnings?",
-                        subtitle = "Show warnings when approaching time limit",
-                        onDisable = { currentOptionStep = 2 },
-                        onEnable = {
-                            viewModel.onWarningEnabledChanged(true)
-                            currentOptionStep = 2
-                        }
-                    )
-                }
-            } else {
-                // Regular switches for edit mode or finished steps
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant)
-                ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        OptionRow("Tracking enabled", uiState.trackingEnabled, viewModel::onTrackingEnabledChanged)
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colorScheme.outlineVariant)
-                        OptionRow("Warning enabled", uiState.warningEnabled, viewModel::onWarningEnabledChanged)
-                    }
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    OptionRow("Tracking enabled", uiState.trackingEnabled, viewModel::onTrackingEnabledChanged)
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colorScheme.outlineVariant)
+                    OptionRow("Warning enabled", uiState.warningEnabled, viewModel::onWarningEnabledChanged)
                 }
             }
 
@@ -253,7 +276,7 @@ fun CreateEditRuleScreen(
                 Text(uiState.errorMessage!!, color = Color.Red, style = MaterialTheme.typography.bodySmall)
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Save Button
             Button(
@@ -270,48 +293,6 @@ fun CreateEditRuleScreen(
                 } else {
                     val label = if (uiState.isEditMode) "Update Rule" else "Save Rule"
                     Text(label, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun OptionStepCard(
-    title: String,
-    subtitle: String,
-    onDisable: () -> Unit,
-    onEnable: () -> Unit
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(bottom = 8.dp))
-            Text(subtitle, color = colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onDisable,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, colorScheme.primary),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colorScheme.primary)
-                ) {
-                    Text("Disable", fontWeight = FontWeight.Medium)
-                }
-                Button(
-                    onClick = onEnable,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary)
-                ) {
-                    Text("Enable", fontWeight = FontWeight.Medium, color = Color.White)
                 }
             }
         }

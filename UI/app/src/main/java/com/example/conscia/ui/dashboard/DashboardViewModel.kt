@@ -1,36 +1,49 @@
 package com.example.conscia.ui.dashboard
 
 import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.conscia.data.AppDatabase
+import com.example.conscia.data.remote.api.ConsciaApiService
 import com.example.conscia.data.rule.RuleRepository
 import com.example.conscia.data.usage.UsagePermissionHelper
-import com.example.conscia.data.usage.UsageStatsRepository
 import com.example.conscia.data.weekly.WeeklySummaryManager
 import com.example.conscia.domain.model.UsageLimitStatus
 import com.example.conscia.domain.usecase.EvaluateTrackedAppsUsageUseCase
+import com.example.conscia.domain.usecase.GetRulesUseCase
+import com.example.conscia.domain.usecase.GetTodayUsageUseCase
+import com.example.conscia.domain.usecase.GetWeeklyUsageUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
-class DashboardViewModel(application: Application) : AndroidViewModel(application) {
-    private val usageRepository = UsageStatsRepository(application)
-    private val ruleRepository = RuleRepository(AppDatabase.getDatabase(application).ruleDao())
-    private val weeklySummaryManager = WeeklySummaryManager(application)
-    private val evaluateUseCase = EvaluateTrackedAppsUsageUseCase()
+@HiltViewModel
+class DashboardViewModel @Inject constructor(
+    private val application: Application,
+    private val getTodayUsageUseCase: GetTodayUsageUseCase,
+    private val getWeeklyUsageUseCase: GetWeeklyUsageUseCase,
+    private val getRulesUseCase: GetRulesUseCase,
+    private val weeklySummaryManager: WeeklySummaryManager,
+    private val evaluateUseCase: EvaluateTrackedAppsUsageUseCase,
+    private val ruleRepository: RuleRepository,
+    private val apiService: ConsciaApiService
+) : ViewModel() {
     
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
+    private val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+
     init {
         refresh()
+        loadUserProfile()
     }
 
     fun refresh() {
-        val hasPermission = UsagePermissionHelper.isUsageAccessGranted(getApplication())
+        val hasPermission = UsagePermissionHelper.isUsageAccessGranted(application)
         _uiState.update { it.copy(hasUsagePermission = hasPermission) }
         
         if (hasPermission) {
@@ -40,22 +53,35 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    private fun loadUserProfile() {
+        viewModelScope.launch {
+            try {
+                val response = apiService.getUserProfile()
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val user = response.body()?.data
+                    _uiState.update { it.copy(
+                        userName = user?.displayName ?: "User",
+                        avatarUrl = user?.avatarUrl
+                    ) }
+                }
+            } catch (e: Exception) {
+                // Keep default Guest
+            }
+        }
+    }
+
     private fun loadDashboardData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                // 1. Get real usage data
-                val todayUsage = usageRepository.getTodayUsage()
+                val todayUsage = getTodayUsageUseCase()
                 val totalToday = todayUsage.sumOf { it.totalTimeInForegroundMillis }
                 
-                // 2. Get weekly preview
-                val weeklyBreakdown = usageRepository.getWeeklyUsageBreakdown()
+                val weeklyBreakdown = getWeeklyUsageUseCase()
                 
-                // 3. Get rules
-                val allRules = ruleRepository.allRules.first()
+                val allRules = getRulesUseCase().first()
                 val trackedPackages = allRules.filter { it.trackingEnabled }.map { it.packageName }.toSet()
                 
-                // 4. Evaluate limit status for tracked apps
                 val trackedStatuses = evaluateUseCase.execute(allRules, todayUsage)
                 val trackedTodayUsageMillis = todayUsage
                     .filter { it.packageName in trackedPackages }
@@ -100,8 +126,37 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun extendLimit(ruleId: Long) {
+        viewModelScope.launch {
+            val rule = ruleRepository.getRuleById(ruleId) ?: return@launch
+            val today = dateFormatter.format(Date())
+            
+            val currentCount = if (rule.lastExtensionDate == today) rule.extensionCount else 0
+            if (currentCount >= 3) {
+                _uiState.update { it.copy(errorMessage = "Maximum 3 extensions reached for ${rule.appName} today") }
+                return@launch
+            }
+
+            val updatedRule = if (rule.lastExtensionDate == today) {
+                rule.copy(
+                    extensionMinutes = rule.extensionMinutes + 5,
+                    extensionCount = rule.extensionCount + 1
+                )
+            } else {
+                rule.copy(
+                    extensionMinutes = 5, 
+                    extensionCount = 1,
+                    lastExtensionDate = today
+                )
+            }
+            
+            ruleRepository.updateRule(updatedRule)
+            refresh()
+        }
+    }
+
     fun onGrantUsageAccessClicked() {
-        UsagePermissionHelper.openUsageAccessSettings(getApplication())
+        UsagePermissionHelper.openUsageAccessSettings(application)
     }
 
     private fun buildWeeklySummaryLabel(startMillis: Long, endMillis: Long, isLockedSnapshot: Boolean): String {

@@ -1,14 +1,14 @@
 package com.example.conscia.ui.insights
 
 import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.conscia.data.AppDatabase
 import com.example.conscia.data.remote.RemoteUsageSyncRepository
 import com.example.conscia.data.rule.RuleRepository
 import com.example.conscia.data.usage.UsagePermissionHelper
 import com.example.conscia.data.usage.UsageStatsRepository
 import com.example.conscia.util.TimeFormatters
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +19,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 import kotlin.math.roundToInt
 
 data class InsightsUiState(
@@ -37,10 +38,13 @@ data class InsightsUiState(
     val lastUpdatedLabel: String = ""
 )
 
-class InsightsViewModel(application: Application) : AndroidViewModel(application) {
-    private val usageRepository = UsageStatsRepository(application)
-    private val ruleRepository = RuleRepository(AppDatabase.getDatabase(application).ruleDao())
-    private val remoteUsageSyncRepository = RemoteUsageSyncRepository(application)
+@HiltViewModel
+class InsightsViewModel @Inject constructor(
+    private val application: Application,
+    private val usageRepository: UsageStatsRepository,
+    private val ruleRepository: RuleRepository,
+    private val remoteUsageSyncRepository: RemoteUsageSyncRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(InsightsUiState())
     val uiState: StateFlow<InsightsUiState> = _uiState.asStateFlow()
@@ -69,12 +73,12 @@ class InsightsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun onGrantUsageAccessClicked() {
-        UsagePermissionHelper.openUsageAccessSettings(getApplication())
+        UsagePermissionHelper.openUsageAccessSettings(application)
     }
 
     private fun loadInsightsForOffset(weekOffset: Int, showLoading: Boolean) {
         val range = buildSevenDayRange(weekOffset)
-        val hasPermission = UsagePermissionHelper.isUsageAccessGranted(getApplication())
+        val hasPermission = UsagePermissionHelper.isUsageAccessGranted(application)
 
         if (!hasPermission) {
             _uiState.update {

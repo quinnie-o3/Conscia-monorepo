@@ -1,13 +1,18 @@
 package com.example.conscia.ui.rules
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.conscia.data.AppDatabase
+import com.example.conscia.data.remote.api.ConsciaApiService
+import com.example.conscia.data.remote.dto.IntentionRemote
 import com.example.conscia.data.rule.RuleEntity
 import com.example.conscia.data.rule.RuleRepository
+import com.example.conscia.domain.usecase.DeleteRuleUseCase
+import com.example.conscia.domain.usecase.GetRuleByIdUseCase
+import com.example.conscia.domain.usecase.UpsertRuleUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class CreateEditRuleUiState(
     val selectedPackageName: String = "",
@@ -21,8 +26,9 @@ data class CreateEditRuleUiState(
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false,
     val errorMessage: String? = null,
-    // Validation flags
-    val showErrors: Boolean = false
+    val showErrors: Boolean = false,
+    val availableIntentions: List<String> = emptyList(),
+    val isLoadingIntentions: Boolean = false
 ) {
     val isAppValid: Boolean = selectedPackageName.isNotEmpty()
     val isIntentionValid: Boolean = intention.isNotBlank()
@@ -30,23 +36,61 @@ data class CreateEditRuleUiState(
     val isFormValid: Boolean = isAppValid && isIntentionValid && isLimitValid
 }
 
-class CreateEditRuleViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository: RuleRepository
+@HiltViewModel
+class CreateEditRuleViewModel @Inject constructor(
+    private val getRuleByIdUseCase: GetRuleByIdUseCase,
+    private val upsertRuleUseCase: UpsertRuleUseCase,
+    private val deleteRuleUseCase: DeleteRuleUseCase,
+    private val repository: RuleRepository,
+    private val apiService: ConsciaApiService
+) : ViewModel() {
+
     private var currentRuleId: Long? = null
 
     private val _uiState = MutableStateFlow(CreateEditRuleUiState())
     val uiState: StateFlow<CreateEditRuleUiState> = _uiState.asStateFlow()
 
     init {
-        val ruleDao = AppDatabase.getDatabase(application).ruleDao()
-        repository = RuleRepository(ruleDao)
+        fetchIntentions()
+    }
+
+    fun fetchIntentions() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingIntentions = true) }
+            try {
+                val response = apiService.getIntentions()
+                if (response.isSuccessful) {
+                    val intentions = response.body()?.data?.map { it.label } ?: emptyList()
+                    _uiState.update { it.copy(availableIntentions = intentions, isLoadingIntentions = false) }
+                } else {
+                    _uiState.update { it.copy(isLoadingIntentions = false) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoadingIntentions = false) }
+            }
+        }
+    }
+
+    fun createCustomIntention(label: String) {
+        viewModelScope.launch {
+            try {
+                val response = apiService.createIntention(mapOf("label" to label))
+                if (response.isSuccessful) {
+                    fetchIntentions() // Refresh list
+                    onIntentionChanged(label) // Select it
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
     }
 
     fun loadRule(ruleId: Long) {
+        if (ruleId == -1L) return
         currentRuleId = ruleId
         _uiState.update { it.copy(isEditMode = true) }
         viewModelScope.launch {
-            repository.getRuleById(ruleId)?.let { rule ->
+            getRuleByIdUseCase(ruleId)?.let { rule ->
                 _uiState.update { state ->
                     state.copy(
                         selectedPackageName = rule.packageName,
@@ -108,28 +152,19 @@ class CreateEditRuleViewModel(application: Application) : AndroidViewModel(appli
 
             val totalMinutes = (state.limitHours.toIntOrNull() ?: 0) * 60 + (state.limitMinutes.toIntOrNull() ?: 0)
             val existingRule = repository.getRuleByPackageName(state.selectedPackageName)
+            
             if (!state.isEditMode && existingRule != null) {
                 _uiState.update {
                     it.copy(
                         isSaving = false,
-                        errorMessage = "A rule for this app already exists. Edit it instead of creating a duplicate."
-                    )
-                }
-                return@launch
-            }
-
-            if (state.isEditMode && existingRule != null && existingRule.id != currentRuleId) {
-                _uiState.update {
-                    it.copy(
-                        isSaving = false,
-                        errorMessage = "Another rule already uses this app. Choose a different app or edit the existing rule."
+                        errorMessage = "A rule for this app already exists. Edit it instead."
                     )
                 }
                 return@launch
             }
 
             val rule = RuleEntity(
-                id = currentRuleId ?: 0,
+                id = if (state.isEditMode) currentRuleId ?: 0 else 0,
                 packageName = state.selectedPackageName,
                 appName = state.selectedAppName,
                 intentionLabel = state.intention,
@@ -139,11 +174,7 @@ class CreateEditRuleViewModel(application: Application) : AndroidViewModel(appli
                 updatedAt = System.currentTimeMillis()
             )
 
-            if (state.isEditMode) {
-                repository.updateRule(rule)
-            } else {
-                repository.insertRule(rule)
-            }
+            upsertRuleUseCase(rule)
 
             _uiState.update { it.copy(isSaving = false, saveSuccess = true) }
         }
@@ -152,8 +183,8 @@ class CreateEditRuleViewModel(application: Application) : AndroidViewModel(appli
     fun deleteRule() {
         val id = currentRuleId ?: return
         viewModelScope.launch {
-            val rule = repository.getRuleById(id) ?: return@launch
-            repository.deleteRule(rule)
+            val rule = getRuleByIdUseCase(id) ?: return@launch
+            deleteRuleUseCase(rule)
             _uiState.update { it.copy(saveSuccess = true) }
         }
     }

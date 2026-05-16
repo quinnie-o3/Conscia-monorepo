@@ -1,65 +1,82 @@
 package com.example.conscia.data.remote.api
 
 import com.example.conscia.data.remote.dto.*
-import retrofit2.Call
+import retrofit2.Response
 import retrofit2.http.*
 
 interface ConsciaApiService {
-    // 1. Register Device
+    // --- Auth ---
+    @POST("auth/register")
+    suspend fun register(@Body request: RegisterRequest): Response<ApiResponse<AuthResponse>>
+
+    @POST("auth/login")
+    suspend fun login(@Body request: LoginRequest): Response<ApiResponse<AuthResponse>>
+
+    @POST("auth/google")
+    suspend fun googleLogin(@Body request: GoogleLoginRequest): Response<ApiResponse<AuthResponse>>
+
+    @POST("auth/reset-password")
+    suspend fun resetPassword(@Body request: ResetPasswordRequest): Response<ApiResponse<Unit>>
+
+    // --- User ---
+    @GET("users/profile")
+    suspend fun getUserProfile(): Response<ApiResponse<UserData>>
+
+    @PATCH("users/profile")
+    suspend fun updateUserProfile(@Body request: Map<String, String>): Response<ApiResponse<UserData>>
+
+    // --- Device ---
     @POST("devices/register")
-    fun registerDevice(@Body request: DeviceRegisterRequest): Call<ApiResponse<DeviceData>>
+    suspend fun registerDevice(@Body request: DeviceRegisterRequest): Response<ApiResponse<DeviceData>>
 
-    // 2. Get Devices
     @GET("devices")
-    fun getDevices(): Call<ApiResponse<List<DeviceData>>>
+    suspend fun getDevices(): Response<ApiResponse<List<DeviceData>>>
 
-    // 3. Get Purpose Tags
+    // --- Rules & Sessions ---
     @GET("purpose-tags")
-    fun getPurposeTags(): Call<ApiResponse<List<PurposeTag>>>
+    suspend fun getPurposeTags(): Response<ApiResponse<List<PurposeTag>>>
 
-    // 4. Create or Update Tracking Rule
     @POST("tracking-rules")
-    fun upsertTrackingRule(@Body request: TrackingRuleRequest): Call<ApiResponse<TrackingRule>>
+    suspend fun upsertTrackingRule(@Body request: TrackingRuleRequest): Response<ApiResponse<TrackingRule>>
 
-    // 5. Get Tracking Rules
     @GET("tracking-rules")
-    fun getTrackingRules(
-        @Query("anonymousUserId") anonymousUserId: String?,
+    suspend fun getTrackingRules(
         @Query("deviceId") deviceId: String
-    ): Call<ApiResponse<List<TrackingRule>>>
+    ): Response<ApiResponse<List<TrackingRule>>>
 
-    // 6. Delete Tracking Rule
     @DELETE("tracking-rules")
-    fun deleteTrackingRule(
-        @Query("anonymousUserId") anonymousUserId: String?,
+    suspend fun deleteTrackingRule(
         @Query("deviceId") deviceId: String,
         @Query("packageName") packageName: String
-    ): Call<ApiResponse<Unit>>
+    ): Response<ApiResponse<Unit>>
 
-    // 7. Sync Usage Sessions
     @POST("sessions/sync")
-    fun syncSessions(@Body request: SyncSessionsBatchRequest): Call<ApiResponse<SyncSessionsResult>>
+    suspend fun syncSessions(@Body request: SyncSessionsBatchRequest): Response<ApiResponse<SyncSessionsResult>>
 
-    // 8. Usage by purpose (Insights)
+    // --- Intentions ---
+    @GET("intentions")
+    suspend fun getIntentions(): Response<ApiResponse<List<IntentionRemote>>>
+
+    @POST("intentions")
+    suspend fun createIntention(@Body request: Map<String, String>): Response<ApiResponse<IntentionRemote>>
+    
+    @DELETE("intentions/{id}")
+    suspend fun deleteIntention(@Path("id") id: String): Response<ApiResponse<Unit>>
+
+    // --- Insights & Stats ---
     @GET("stats/usage-by-purpose")
-    fun getUsageByPurpose(
+    suspend fun getUsageByPurpose(
         @Query("deviceId") deviceId: String,
-        @Query("anonymousUserId") anonymousUserId: String? = null,
         @Query("from") from: String? = null,
         @Query("to") to: String? = null,
         @Query("period") period: String? = null,
         @Query("date") date: String? = null,
-        @Query("timezone") timezone: String? = null,
-        @Header("x-device-id") headerDeviceId: String? = null,
-        @Header("x-timezone") headerTimezone: String? = null
-    ): Call<ApiResponse<InsightResponse>>
+        @Query("timezone") timezone: String? = null
+    ): Response<ApiResponse<InsightResponse>>
 
-    // 9. Daily stats
     @GET("stats/daily")
-    fun getDailyStats(
+    suspend fun getDailyStats(
         @Query("deviceId") deviceId: String,
-        @Query("anonymousUserId") anonymousUserId: String? = null,
-        @Query("date") date: String,
-        @Header("x-device-id") headerDeviceId: String? = null
-    ): Call<ApiResponse<DailyStatsResponse>>
+        @Query("date") date: String
+    ): Response<ApiResponse<DailyStatsResponse>>
 }

@@ -9,5 +9,6 @@ drawable logo
 drawable onboarding_illustration
 drawable security_illustration
 drawable work_illustration
+string default_web_client_id
 style Theme.Conscia
 xml accessibility_service_config

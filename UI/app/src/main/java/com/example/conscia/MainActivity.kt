@@ -3,18 +3,20 @@ package com.example.conscia
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -24,21 +26,39 @@ import com.example.conscia.data.TrackedAppsDataStore
 import com.example.conscia.ui.dashboard.DashboardRoute
 import com.example.conscia.ui.onboarding.OnboardingRoute
 import com.example.conscia.ui.onboarding.ChooseAppsToTrackScreen
+import com.example.conscia.ui.onboarding.StarterRulesRoute
 import com.example.conscia.ui.permissions.PermissionsRoute
 import com.example.conscia.ui.rules.RulesRoute
 import com.example.conscia.ui.rules.CreateEditRuleScreen
-import com.example.conscia.ui.intention.IntentionRoute
+import com.example.conscia.ui.intention.SessionHistoryScreen
 import com.example.conscia.ui.insights.InsightsRoute
 import com.example.conscia.ui.settings.SettingsRoute
+import com.example.conscia.ui.settings.ManageIntentionsScreen
+import com.example.conscia.ui.settings.EditProfileScreen
+import com.example.conscia.ui.auth.LoginScreen
+import com.example.conscia.ui.auth.RegisterScreen
+import com.example.conscia.data.rule.RuleRepository
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var dataStore: TrackedAppsDataStore
+    
+    @Inject
+    lateinit var ruleRepository: RuleRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ConsciaAppTheme {
+            val isDarkModePref by dataStore.isDarkModeFlow.collectAsState(initial = isSystemInDarkTheme())
+            
+            ConsciaAppTheme(darkTheme = isDarkModePref) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    AppNavigation()
+                    AppNavigation(dataStore, ruleRepository)
                 }
             }
         }
@@ -46,22 +66,35 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun AppNavigation() {
-    val context = LocalContext.current
+fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepository) {
     val scope = rememberCoroutineScope()
-    val dataStore = remember { TrackedAppsDataStore(context) }
     val isOnboardingCompleted by dataStore.isOnboardingCompletedFlow.collectAsState(initial = null)
+    val accessToken by dataStore.accessTokenFlow.collectAsState(initial = null)
+    val isDarkMode by dataStore.isDarkModeFlow.collectAsState(initial = isSystemInDarkTheme())
     
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     
-    val screensWithBottomBar = listOf("dashboard", "rules", "intention", "insights", "settings")
+    val screensWithBottomBar = listOf("dashboard", "rules", "sessions", "insights", "settings")
     val showBottomBar = currentDestination?.route?.split("/")?.firstOrNull() in screensWithBottomBar
 
     if (isOnboardingCompleted == null) {
         Box(modifier = Modifier.fillMaxSize())
         return
+    }
+
+    val routeAfterAuth = if (isOnboardingCompleted == true) "dashboard" else "choose_apps"
+
+    LaunchedEffect(accessToken, isOnboardingCompleted, currentDestination?.route) {
+        val currentRoute = currentDestination?.route
+        val authRoute = currentRoute?.takeIf { it in listOf("login", "register") }
+        if (accessToken != null && authRoute != null) {
+            navController.navigate(routeAfterAuth) {
+                popUpTo(authRoute) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
     }
 
     Scaffold(
@@ -71,8 +104,8 @@ fun AppNavigation() {
                     val items = listOf(
                         Triple("dashboard", "Home", Icons.Default.Dashboard),
                         Triple("rules", "Rules", Icons.Default.Rule),
-                        Triple("intention", "Sessions", Icons.Default.Schedule),
-                        Triple("insights", "Insights", Icons.Default.History),
+                        Triple("sessions", "Sessions", Icons.Default.History),
+                        Triple("insights", "Insights", Icons.Default.Analytics),
                         Triple("settings", "Settings", Icons.Default.Settings)
                     )
                     items.forEach { (route, label, icon) ->
@@ -95,20 +128,60 @@ fun AppNavigation() {
     ) { innerPadding ->
         NavHost(
             navController = navController, 
-            startDestination = if (isOnboardingCompleted == true) "dashboard" else "onboarding", 
-            modifier = Modifier.padding(innerPadding)
+            startDestination = if (accessToken == null) "login" else routeAfterAuth,
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { fadeIn(animationSpec = tween(300)) + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(300)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(300)) + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(300)) },
+            popExitTransition = { fadeOut(animationSpec = tween(300)) + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(300)) }
         ) {
+            // --- AUTH ---
+            composable("login") { 
+                LoginScreen(
+                    onLoginSuccess = {
+                        navController.navigate(routeAfterAuth) {
+                            popUpTo("login") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToRegister = { navController.navigate("register") },
+                    onBackClick = { navController.navigate("choose_apps") }
+                ) 
+            }
+            composable("register") {
+                RegisterScreen(
+                    onRegisterSuccess = {
+                        navController.navigate(routeAfterAuth) {
+                            popUpTo("register") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToLogin = { navController.popBackStack() }
+                )
+            }
+
+            // --- ONBOARDING ---
             composable("onboarding") { OnboardingRoute { navController.navigate("choose_apps") } }
-            composable("choose_apps") { ChooseAppsToTrackScreen({ navController.navigate("permissions") }) }
+            composable("choose_apps") { 
+                ChooseAppsToTrackScreen(onSaveSelection = { navController.navigate("starter_rules") }) 
+            }
+            composable("starter_rules") {
+                StarterRulesRoute(
+                    onBackClick = { navController.popBackStack() },
+                    onContinueClick = { navController.navigate("permissions") }
+                )
+            }
             composable("permissions") { 
                 PermissionsRoute { 
-                    scope.launch {
-                        dataStore.setOnboardingCompleted(true)
-                    }
+                    scope.launch { dataStore.setOnboardingCompleted(true) }
                     navController.navigate("dashboard") { popUpTo("onboarding") { inclusive = true } } 
                 } 
             }
-            composable("dashboard") { DashboardRoute() }
+
+            // --- MAIN ---
+            composable("dashboard") { 
+                DashboardRoute(onNavigateToSettings = { navController.navigate("settings") }) 
+            }
             composable("rules") { 
                 RulesRoute(
                     onBackClick = { navController.popBackStack() }, 
@@ -116,25 +189,55 @@ fun AppNavigation() {
                     onEditRuleClick = { id -> navController.navigate("create_rule/$id") }
                 ) 
             }
-            composable(
-                route = "create_rule/{ruleId}",
-                arguments = listOf(navArgument("ruleId") { type = NavType.LongType })
-            ) { backStack ->
-                val ruleId = backStack.arguments?.getLong("ruleId")
+            composable("create_rule/{ruleId}", arguments = listOf(navArgument("ruleId") { type = NavType.LongType })) { backStack ->
                 CreateEditRuleScreen(
-                    ruleId = ruleId, 
+                    ruleId = backStack.arguments?.getLong("ruleId"), 
                     onBackClick = { navController.popBackStack() }, 
-                    onSelectAppClick = {}
+                    onSelectAppClick = { /* Navigate to app selection if needed */ }
                 )
             }
-            composable("intention") { IntentionRoute(appName = "App", onBackClick = { navController.popBackStack() }, onContinueClick = {}) }
+            composable("sessions") { SessionHistoryScreen() }
             composable("insights") { InsightsRoute() }
-            composable("settings") { SettingsRoute(onBackClick = { navController.popBackStack() }, isDarkMode = false, onDarkModeChange = {}, onNavigateToSection = {}) }
+            
+            // --- SETTINGS ---
+            composable("settings") { 
+                SettingsRoute(
+                    onBackClick = { navController.popBackStack() }, 
+                    isDarkMode = isDarkMode, 
+                    onDarkModeChange = { enabled ->
+                        scope.launch { dataStore.setDarkModeEnabled(enabled) }
+                    }, 
+                    onNavigateToSection = { section ->
+                        when (section) {
+                            "manage_intentions" -> navController.navigate("manage_intentions")
+                            "profile" -> navController.navigate("edit_profile")
+                            "logout" -> {
+                                scope.launch {
+                                    ruleRepository.deleteAllLocalRules()
+                                    dataStore.clearAuth()
+                                    navController.navigate("login") { popUpTo(0) { inclusive = true } }
+                                }
+                            }
+                        }
+                    }
+                ) 
+            }
+            composable("manage_intentions") {
+                ManageIntentionsScreen(onBackClick = { navController.popBackStack() })
+            }
+            composable("edit_profile") {
+                EditProfileScreen(onBackClick = { navController.popBackStack() })
+            }
         }
     }
 }
 
 @Composable
-fun ConsciaAppTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = lightColorScheme(primary = Color(0xFF006654)), content = content)
+fun ConsciaAppTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    val colorScheme = if (darkTheme) {
+        darkColorScheme(primary = Color(0xFF00A38D), secondary = Color(0xFF006654))
+    } else {
+        lightColorScheme(primary = Color(0xFF006654), secondary = Color(0xFF00A38D))
+    }
+    MaterialTheme(colorScheme = colorScheme, content = content)
 }

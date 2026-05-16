@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.conscia.app-mergeDebugResources-71:/values-ldrtl-v17/values-ldrtl-v17.xml",
+            "outputFile": "com.example.conscia.app-mergeDebugResources-78:/values-ldrtl-v17/values-ldrtl-v17.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\Acer\\.gradle\\caches\\8.10.2\\transforms\\e546343634e1afc179a5590d7a410a40\\transformed\\material-1.12.0\\res\\values-ldrtl-v17\\values-ldrtl-v17.xml",
+                    "source": "C:\\Users\\Acer\\.gradle\\caches\\8.10.2\\transforms\\9ce8c000d9a9e5ae1dba3e04248de8a1\\transformed\\material-1.12.0\\res\\values-ldrtl-v17\\values-ldrtl-v17.xml",
                     "from": {
                         "startLines": "2,3",
                         "startColumns": "4,4",

@@ -17,24 +17,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,25 +27,64 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.conscia.ui.components.InstalledAppIcon
-
-private val starterIntentionOptions = listOf(
-    "Learning",
-    "Entertainment",
-    "Work",
-    "Killing Time"
-)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun StarterRulesRoute(
     onBackClick: () -> Unit,
     onContinueClick: () -> Unit,
-    viewModel: StarterRulesViewModel = viewModel()
+    viewModel: StarterRulesViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
+
+    var showCustomIntentionDialog by remember { mutableStateOf(false) }
+    var customIntentionText by remember { mutableStateOf("") }
+    var targetingPackage by remember { mutableStateOf<String?>(null) }
+
+    if (showCustomIntentionDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showCustomIntentionDialog = false
+                targetingPackage = null
+            },
+            title = { Text("New Reason") },
+            text = {
+                OutlinedTextField(
+                    value = customIntentionText,
+                    onValueChange = { customIntentionText = it },
+                    label = { Text("Enter your intention") },
+                    placeholder = { Text("e.g. Learning English") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (customIntentionText.isNotBlank() && targetingPackage != null) {
+                            viewModel.createCustomIntention(customIntentionText, targetingPackage!!)
+                            customIntentionText = ""
+                            showCustomIntentionDialog = false
+                            targetingPackage = null
+                        }
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showCustomIntentionDialog = false
+                    targetingPackage = null
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Scaffold(
         containerColor = colorScheme.background,
@@ -179,9 +203,13 @@ fun StarterRulesRoute(
                     items(uiState.drafts, key = { it.packageName }) { draft ->
                         StarterRuleCard(
                             draft = draft,
-                            options = starterIntentionOptions,
+                            options = uiState.availableIntentions,
                             onIntentionSelected = { intention ->
                                 viewModel.onIntentionSelected(draft.packageName, intention)
+                            },
+                            onAddCustomIntention = {
+                                targetingPackage = draft.packageName
+                                showCustomIntentionDialog = true
                             }
                         )
                     }
@@ -196,7 +224,8 @@ fun StarterRulesRoute(
 private fun StarterRuleCard(
     draft: StarterRuleDraft,
     options: List<String>,
-    onIntentionSelected: (String) -> Unit
+    onIntentionSelected: (String) -> Unit,
+    onAddCustomIntention: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -247,6 +276,22 @@ private fun StarterRuleCard(
                         )
                     )
                 }
+                
+                // Exact label match as requested
+                FilterChip(
+                    selected = false,
+                    onClick = onAddCustomIntention,
+                    label = { 
+                        androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Other reason -->")
+                            Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp).padding(start = 4.dp))
+                        }
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                        labelColor = colorScheme.onSecondaryContainer
+                    )
+                )
             }
         }
     }

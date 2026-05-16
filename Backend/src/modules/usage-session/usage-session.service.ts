@@ -2,10 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import {
-  normalizeOptionalString,
-  resolveAnonymousUserId,
-} from '../../common/device-identity.util';
+import { normalizeOptionalString } from '../../common/device-identity.util';
 import { DeviceService } from '../device/device.service';
 import {
   SyncUsageSessionsDto,
@@ -32,6 +29,7 @@ type NormalizedUsageSession = {
   tags: string[];
   timezoneOffsetMinutes?: number;
   trackingEnabled: boolean;
+  userId: string;
   warningEnabled: boolean;
 };
 
@@ -46,7 +44,12 @@ export class UsageSessionService {
   private buildIdentityFilter(
     anonymousUserId: string | undefined,
     deviceId: string,
+    userId?: string,
   ) {
+    if (userId) {
+      return { userId };
+    }
+
     const filter: Record<string, unknown> = {
       clientDeviceId: deviceId,
     };
@@ -104,10 +107,11 @@ export class UsageSessionService {
       .filter((tag) => tag.length > 0);
   }
 
-  private normalizeSession(
+  private async normalizeSession(
+    userId: string,
     dto: SyncUsageSessionsDto,
     session: UsageSessionItemDto,
-  ): NormalizedUsageSession {
+  ): Promise<NormalizedUsageSession> {
     const deviceId = this.normalizeRequiredString(
       session.deviceId || dto.deviceId,
       'deviceId',
@@ -137,10 +141,11 @@ export class UsageSessionService {
     const purposeTag = normalizeOptionalString(session.purposeTag);
     const intentionLabel = normalizeOptionalString(session.intentionLabel);
     const tags = this.normalizeTags(session.tags);
-    const anonymousUserId = resolveAnonymousUserId(
-      dto.anonymousUserId,
-      deviceId,
-    );
+    const anonymousUserId =
+      await this.deviceService.resolveAnonymousUserIdForDevice(deviceId);
+    const externalId =
+      normalizeOptionalString(session.externalId) ||
+      `${anonymousUserId}:${deviceId}:${packageName}:${deviceLocalDate}`;
 
     return {
       anonymousUserId,
@@ -152,9 +157,7 @@ export class UsageSessionService {
       deviceTimezone: normalizeOptionalString(session.deviceTimezone),
       durationSeconds: session.durationSeconds,
       endedAt,
-      externalId:
-        normalizeOptionalString(session.externalId) ||
-        `${anonymousUserId}:${deviceId}:${packageName}:${deviceLocalDate}`,
+      externalId,
       intentionLabel,
       isClassified:
         session.isClassified ?? (tags.length > 0 || Boolean(intentionLabel)),
@@ -164,22 +167,30 @@ export class UsageSessionService {
       tags,
       timezoneOffsetMinutes: session.timezoneOffsetMinutes ?? undefined,
       trackingEnabled: session.trackingEnabled ?? false,
+      userId,
       warningEnabled: session.warningEnabled ?? false,
     };
   }
 
-  async sync(dto: SyncUsageSessionsDto) {
+  async sync(userId: string, dto: SyncUsageSessionsDto) {
     const sessionsByExternalId = new Map<string, NormalizedUsageSession>();
-    const deviceIdentityById = new Map<string, string>();
+    const deviceIdentityById = new Map<
+      string,
+      { anonymousUserId: string; userId: string }
+    >();
 
     for (const session of dto.sessions) {
-      const normalizedSession = this.normalizeSession(dto, session);
+      const normalizedSession = await this.normalizeSession(
+        userId,
+        dto,
+        session,
+      );
 
       sessionsByExternalId.set(normalizedSession.externalId, normalizedSession);
-      deviceIdentityById.set(
-        normalizedSession.deviceId,
-        normalizedSession.anonymousUserId,
-      );
+      deviceIdentityById.set(normalizedSession.deviceId, {
+        anonymousUserId: normalizedSession.anonymousUserId,
+        userId,
+      });
     }
 
     const normalizedSessions = Array.from(sessionsByExternalId.values());
@@ -206,8 +217,8 @@ export class UsageSessionService {
 
     await Promise.all(
       Array.from(deviceIdentityById.entries()).map(
-        ([deviceId, anonymousUserId]) =>
-          this.deviceService.markSynced(deviceId, anonymousUserId),
+        ([deviceId, identity]) =>
+          this.deviceService.markSynced(deviceId, identity),
       ),
     );
 
@@ -220,13 +231,14 @@ export class UsageSessionService {
   }
 
   async findByDate(
-    _anonymousUserId: string | undefined,
+    anonymousUserId: string | undefined,
     deviceId: string,
     date: string,
+    userId?: string,
   ) {
     return this.usageSessionModel
       .find({
-        ...this.buildIdentityFilter(_anonymousUserId, deviceId),
+        ...this.buildIdentityFilter(anonymousUserId, deviceId, userId),
         deviceLocalDate: date,
       })
       .sort({ startedAt: 1, packageName: 1 })
@@ -234,14 +246,15 @@ export class UsageSessionService {
   }
 
   async findByDateRange(
-    _anonymousUserId: string | undefined,
+    anonymousUserId: string | undefined,
     deviceId: string,
     from: string,
     to: string,
+    userId?: string,
   ) {
     return this.usageSessionModel
       .find({
-        ...this.buildIdentityFilter(_anonymousUserId, deviceId),
+        ...this.buildIdentityFilter(anonymousUserId, deviceId, userId),
         deviceLocalDate: {
           $gte: from,
           $lte: to,

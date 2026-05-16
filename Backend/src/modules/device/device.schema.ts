@@ -1,12 +1,25 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import {
+  HydratedDocument,
+  Schema as MongooseSchema,
+  Types,
+} from 'mongoose';
+
+import { User } from '../user/user.schema';
 
 export type DeviceDocument = HydratedDocument<Device>;
 
 @Schema({ timestamps: true })
 export class Device {
-  @Prop({ required: true, index: true })
-  anonymousUserId: string;
+  @Prop({ index: true })
+  anonymousUserId?: string;
+
+  @Prop({
+    index: true,
+    ref: User.name,
+    type: MongooseSchema.Types.ObjectId,
+  })
+  userId?: Types.ObjectId | string;
 
   @Prop({ required: true, index: true })
   deviceId: string;
@@ -31,5 +44,20 @@ export const DeviceSchema = SchemaFactory.createForClass(Device);
 
 DeviceSchema.index(
   { anonymousUserId: 1, deviceId: 1 },
-  { unique: true },
+  {
+    partialFilterExpression: {
+      anonymousUserId: { $exists: true, $type: 'string' },
+      userId: { $exists: false },
+    },
+    unique: true,
+  },
+);
+DeviceSchema.index(
+  { userId: 1, deviceId: 1 },
+  {
+    partialFilterExpression: {
+      userId: { $exists: true },
+    },
+    unique: true,
+  },
 );

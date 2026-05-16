@@ -4,8 +4,11 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
+import javax.inject.Singleton
 
 private val Context.weeklySummaryDataStore by preferencesDataStore(name = "weekly_summary")
 
@@ -24,7 +27,8 @@ data class StoredWeeklySummary(
     val totalUsageMillis: Long
 )
 
-class WeeklySummaryStore(private val context: Context) {
+@Singleton
+class WeeklySummaryStore @Inject constructor(@ApplicationContext private val context: Context) {
     private companion object {
         val ANCHOR_KEY = longPreferencesKey("anchor_millis")
         val RANGE_START_KEY = longPreferencesKey("range_start_millis")

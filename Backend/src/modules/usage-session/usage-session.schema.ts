@@ -1,12 +1,25 @@
-import { HydratedDocument } from 'mongoose';
+import {
+  HydratedDocument,
+  Schema as MongooseSchema,
+  Types,
+} from 'mongoose';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+
+import { User } from '../user/user.schema';
 
 export type UsageSessionDocument = HydratedDocument<UsageSession>;
 
 @Schema({ timestamps: true })
 export class UsageSession {
-  @Prop({ required: true, index: true })
-  anonymousUserId: string;
+  @Prop({ index: true })
+  anonymousUserId?: string;
+
+  @Prop({
+    index: true,
+    ref: User.name,
+    type: MongooseSchema.Types.ObjectId,
+  })
+  userId?: Types.ObjectId | string;
 
   @Prop({ required: true, index: true })
   deviceId: string;
@@ -66,5 +79,15 @@ export class UsageSession {
 export const UsageSessionSchema =
   SchemaFactory.createForClass(UsageSession);
 
+UsageSessionSchema.index({
+  anonymousUserId: 1,
+  clientDeviceId: 1,
+  deviceLocalDate: 1,
+});
+UsageSessionSchema.index({
+  userId: 1,
+  clientDeviceId: 1,
+  deviceLocalDate: 1,
+});
 UsageSessionSchema.index({ clientDeviceId: 1, deviceLocalDate: 1 });
 UsageSessionSchema.index({ deviceId: 1, deviceLocalDate: 1 });

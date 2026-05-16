@@ -1,7 +1,10 @@
 package com.example.conscia.ui.dashboard
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +13,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,14 +24,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.conscia.domain.model.TrackedAppLimitInfo
 import com.example.conscia.domain.model.UsageLimitStatus
 import com.example.conscia.model.AppUsageInfo
@@ -34,9 +43,13 @@ import com.example.conscia.ui.theme.tintedSurface
 import com.example.conscia.util.TimeFormatters
 
 @Composable
-fun DashboardRoute(viewModel: DashboardViewModel = viewModel()) {
+fun DashboardRoute(
+    viewModel: DashboardViewModel = hiltViewModel(),
+    onNavigateToSettings: () -> Unit = {}
+) {
     val uiState by viewModel.uiState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -44,26 +57,20 @@ fun DashboardRoute(viewModel: DashboardViewModel = viewModel()) {
         }
     }
 
-    DashboardContent(
-        uiState = uiState,
-        onGrantPermissionClick = { viewModel.onGrantUsageAccessClicked() }
-    )
-}
-
-@Composable
-fun DashboardContent(
-    uiState: DashboardUiState,
-    onGrantPermissionClick: () -> Unit
-) {
-    val colorScheme = MaterialTheme.colorScheme
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+        }
+    }
 
     Scaffold(
-        containerColor = colorScheme.background,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             if (uiState.hasUsagePermission) {
                 ExtendedFloatingActionButton(
-                    onClick = { /* TODO */ },
-                    containerColor = colorScheme.primary,
+                    onClick = { /* New Goal Action */ },
+                    containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
                     shape = RoundedCornerShape(16.dp),
                     icon = { Icon(Icons.Default.Add, "Add") },
@@ -72,55 +79,145 @@ fun DashboardContent(
             }
         }
     ) { padding ->
-        if (!uiState.hasUsagePermission) {
-            PermissionRequiredView(onGrantPermissionClick, modifier = Modifier.padding(padding))
-        } else if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = colorScheme.primary)
+        DashboardContent(
+            uiState = uiState,
+            onGrantPermissionClick = { viewModel.onGrantUsageAccessClicked() },
+            onExtendLimit = { ruleId -> viewModel.extendLimit(ruleId) },
+            onProfileClick = onNavigateToSettings,
+            modifier = Modifier.padding(padding)
+        )
+    }
+}
+
+@Composable
+fun DashboardContent(
+    uiState: DashboardUiState,
+    onGrantPermissionClick: () -> Unit,
+    onExtendLimit: (Long) -> Unit,
+    onProfileClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    if (!uiState.hasUsagePermission) {
+        PermissionRequiredView(onGrantPermissionClick, modifier = modifier)
+    } else {
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
+                UserHeader(
+                    userName = uiState.userName,
+                    avatarUrl = uiState.avatarUrl,
+                    onClick = onProfileClick
+                )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+
+            item {
+                UsageDonutOverviewCard(
+                    totalMillis = uiState.totalTodayUsageMillis,
+                    trackedMillis = uiState.trackedTodayUsageMillis,
+                    otherMillis = uiState.otherTodayUsageMillis,
+                    exceededCount = uiState.exceededCount,
+                    nearLimitCount = uiState.nearLimitCount
+                )
+            }
+
+            if (uiState.trackedAppStatuses.isNotEmpty()) {
+                item { SectionHeader("Rules Today") }
+                items(uiState.trackedAppStatuses) { statusInfo ->
+                    TrackedAppStatusItem(
+                        info = statusInfo,
+                        onExtendClick = { onExtendLimit(statusInfo.ruleId) }
+                    )
+                }
+            }
+            
+            if (uiState.todayTopApps.isNotEmpty()) {
+                item { SectionHeader("Today's App Usage") }
+                items(uiState.todayTopApps) { usage ->
+                    UsageItem(usage)
+                }
+            }
+
+            item {
+                SectionHeader("Weekly Summary")
+                WeeklyPreviewCard(
+                    totalMillis = uiState.weeklyTotalUsageMillis,
+                    label = uiState.weeklySummaryLabel,
+                    isLockedSnapshot = uiState.hasLockedWeeklySummary
+                )
+            }
+
+            item { Spacer(modifier = Modifier.height(80.dp)) }
+        }
+    }
+}
+
+@Composable
+fun UserHeader(
+    userName: String,
+    avatarUrl: String?,
+    onClick: () -> Unit
+) {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    
+    Surface(
+        modifier = Modifier
+            .wrapContentWidth()
+            .widthIn(max = screenWidth * 0.45f)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable { onClick() },
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(32.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer
             ) {
-                item {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    UsageDonutOverviewCard(
-                        totalMillis = uiState.totalTodayUsageMillis,
-                        trackedMillis = uiState.trackedTodayUsageMillis,
-                        otherMillis = uiState.otherTodayUsageMillis,
-                        exceededCount = uiState.exceededCount,
-                        nearLimitCount = uiState.nearLimitCount
+                if (!avatarUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = avatarUrl,
+                        contentDescription = "Profile",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
-                }
-
-                if (uiState.trackedAppStatuses.isNotEmpty()) {
-                    item { SectionHeader("Rules Today") }
-                    items(uiState.trackedAppStatuses) { statusInfo ->
-                        TrackedAppStatusItem(statusInfo)
+                } else {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
                 }
-                
-                if (uiState.todayTopApps.isNotEmpty()) {
-                    item { SectionHeader("Today's App Usage") }
-                    items(uiState.todayTopApps) { usage ->
-                        UsageItem(usage)
-                    }
-                }
+            }
 
-                item {
-                    SectionHeader("Weekly Summary")
-                    WeeklyPreviewCard(
-                        totalMillis = uiState.weeklyTotalUsageMillis,
-                        label = uiState.weeklySummaryLabel,
-                        isLockedSnapshot = uiState.hasLockedWeeklySummary
-                    )
-                }
-
-                item { Spacer(modifier = Modifier.height(80.dp)) }
+            Column {
+                Text(
+                    text = "Hello,",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = userName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -137,7 +234,10 @@ fun SectionHeader(title: String) {
 }
 
 @Composable
-fun TrackedAppStatusItem(info: TrackedAppLimitInfo) {
+fun TrackedAppStatusItem(
+    info: TrackedAppLimitInfo,
+    onExtendClick: () -> Unit
+) {
     val colorScheme = MaterialTheme.colorScheme
     val statusColor = when (info.status) {
         UsageLimitStatus.EXCEEDED -> Color(0xFFEF4444)
@@ -150,6 +250,12 @@ fun TrackedAppStatusItem(info: TrackedAppLimitInfo) {
         UsageLimitStatus.NEAR_LIMIT -> "Almost at limit"
         UsageLimitStatus.NORMAL -> "On track"
     }
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = info.usagePercent.coerceAtMost(1.0f),
+        animationSpec = tween(durationMillis = 1000),
+        label = "ProgressBarAnimation"
+    )
 
     Card(
         shape = RoundedCornerShape(24.dp),
@@ -177,17 +283,50 @@ fun TrackedAppStatusItem(info: TrackedAppLimitInfo) {
                     Text(info.appName, fontWeight = FontWeight.Bold)
                     Text(info.intentionLabel, style = MaterialTheme.typography.bodySmall, color = statusColor.copy(alpha = 0.7f))
                 }
-                Surface(
-                    color = statusColor.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = statusLabel,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = statusColor
-                    )
+                
+                if (info.status == UsageLimitStatus.EXCEEDED) {
+                    if (info.canExtend) {
+                        TextButton(
+                            onClick = onExtendClick,
+                            colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFBE123C)),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Timer, null, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Extend 5m", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                }
+                                Text("${3 - info.extensionCount} left", fontSize = 9.sp, fontWeight = FontWeight.Normal)
+                            }
+                        }
+                    } else {
+                        Surface(
+                            color = Color(0xFFEF4444).copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "Max Extended",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFEF4444)
+                            )
+                        }
+                    }
+                } else {
+                    Surface(
+                        color = statusColor.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = statusLabel,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = statusColor
+                        )
+                    }
                 }
             }
             
@@ -209,7 +348,7 @@ fun TrackedAppStatusItem(info: TrackedAppLimitInfo) {
             Spacer(modifier = Modifier.height(8.dp))
             
             LinearProgressIndicator(
-                progress = { info.usagePercent.coerceAtMost(1.0f) },
+                progress = { animatedProgress },
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
                 color = statusColor,
                 trackColor = colorScheme.surface
@@ -313,7 +452,14 @@ fun UsageDonutOverviewCard(
 @Composable
 private fun UsageDonutChart(percent: Int, modifier: Modifier = Modifier) {
     val colorScheme = MaterialTheme.colorScheme
-    val sweepAngle = percent.coerceIn(0, 100) / 100f * 360f
+    
+    val animatedPercent by animateFloatAsState(
+        targetValue = percent.coerceIn(0, 100).toFloat(),
+        animationSpec = tween(durationMillis = 1200),
+        label = "DonutChartAnimation"
+    )
+    
+    val sweepAngle = animatedPercent / 100f * 360f
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -334,7 +480,7 @@ private fun UsageDonutChart(percent: Int, modifier: Modifier = Modifier) {
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "${percent.coerceIn(0, 100)}%",
+                text = "${animatedPercent.toInt()}%",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -446,7 +592,7 @@ fun UsageItem(usage: AppUsageInfo) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(40.dp)
                     .background(colorScheme.surface, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {

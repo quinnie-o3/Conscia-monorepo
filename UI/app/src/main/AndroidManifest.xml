@@ -17,7 +17,7 @@
     </queries>
 
     <application
-        android:name=".ConsciaApplication"
+        android:name="com.example.conscia.ConsciaApplication"
         android:allowBackup="true"
         android:icon="@drawable/logo"
         android:roundIcon="@drawable/logo"
@@ -27,7 +27,7 @@
         android:usesCleartextTraffic="true">
 
         <activity
-            android:name=".MainActivity"
+            android:name="com.example.conscia.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.Conscia">
             <intent-filter>
@@ -37,14 +37,14 @@
         </activity>
 
         <activity
-            android:name=".presentation.intervention.IntentionPromptActivity"
+            android:name="com.example.conscia.presentation.intervention.IntentionPromptActivity"
             android:theme="@style/Theme.Conscia"
             android:launchMode="singleTop"
             android:excludeFromRecents="true"
             android:exported="false" />
 
         <activity
-            android:name=".presentation.warning.UsageLimitWarningActivity"
+            android:name="com.example.conscia.presentation.warning.UsageLimitWarningActivity"
             android:theme="@style/Theme.Conscia"
             android:launchMode="singleTop"
             android:excludeFromRecents="true"
@@ -52,7 +52,7 @@
             android:noHistory="true" />
 
         <service
-            android:name=".monitoring.AccessibilityForegroundAppService"
+            android:name="com.example.conscia.monitoring.AccessibilityForegroundAppService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="false">
             <intent-filter>

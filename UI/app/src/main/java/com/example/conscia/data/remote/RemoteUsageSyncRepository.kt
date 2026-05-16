@@ -1,32 +1,37 @@
 package com.example.conscia.data.remote
 
 import android.content.Context
-import com.example.conscia.data.AppDatabase
 import com.example.conscia.data.TrackedAppsDataStore
+import com.example.conscia.data.remote.api.ConsciaApiService
 import com.example.conscia.data.remote.dto.InsightResponse
 import com.example.conscia.data.remote.dto.SyncSessionPayload
 import com.example.conscia.data.remote.dto.SyncSessionsBatchRequest
 import com.example.conscia.data.remote.dto.SyncSessionsResult
-import com.example.conscia.data.remote.network.RetrofitClient
 import com.example.conscia.data.rule.RuleEntity
 import com.example.conscia.data.rule.RuleRepository
 import com.example.conscia.data.usage.UsagePermissionHelper
 import com.example.conscia.data.usage.UsageStatsRepository
 import com.example.conscia.model.DailyAppUsageSnapshot
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class RemoteUsageSyncRepository(private val context: Context) {
-    private val usageRepository = UsageStatsRepository(context)
-    private val ruleRepository = RuleRepository(AppDatabase.getDatabase(context).ruleDao())
-    private val dataStore = TrackedAppsDataStore(context)
-    private val apiService = RetrofitClient.getApiService()
-
+@Singleton
+class RemoteUsageSyncRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val usageRepository: UsageStatsRepository,
+    private val ruleRepository: RuleRepository,
+    private val dataStore: TrackedAppsDataStore,
+    private val apiService: ConsciaApiService
+) {
     suspend fun syncRecentUsage(days: Int = DEFAULT_SYNC_DAYS): SyncSessionsResult = withContext(Dispatchers.IO) {
         if (!UsagePermissionHelper.isUsageAccessGranted(context)) {
             return@withContext SyncSessionsResult()
@@ -39,7 +44,9 @@ class RemoteUsageSyncRepository(private val context: Context) {
 
         val rulesByPackage = ruleRepository.allRules.first().associateBy { it.packageName }
         val deviceId = resolveDeviceId()
+        
         val payload = SyncSessionsBatchRequest(
+            deviceId = deviceId,
             sessions = snapshots.map { snapshot ->
                 buildSessionPayload(
                     snapshot = snapshot,
@@ -49,11 +56,11 @@ class RemoteUsageSyncRepository(private val context: Context) {
             }
         )
 
-        val response = apiService.syncSessions(payload).execute()
+        val response = apiService.syncSessions(payload)
         val body = response.body()
 
         if (!response.isSuccessful || body == null || !body.success || body.data == null) {
-            throw IllegalStateException(body?.error ?: body?.message ?: "Sync request failed")
+            throw IllegalStateException(body?.message ?: "Sync request failed")
         }
 
         body.data
@@ -64,22 +71,23 @@ class RemoteUsageSyncRepository(private val context: Context) {
         rangeEndMillis: Long
     ): InsightResponse = withContext(Dispatchers.IO) {
         val deviceId = resolveDeviceId()
-        val response = apiService.getPurposeInsights(
-            deviceId,
-            formatLocalDate(rangeStartMillis),
-            formatLocalDate(rangeEndMillis)
-        ).execute()
+        val response = apiService.getUsageByPurpose(
+            deviceId = deviceId,
+            from = formatLocalDate(rangeStartMillis),
+            to = formatLocalDate(rangeEndMillis),
+            timezone = TimeZone.getDefault().id
+        )
         val body = response.body()
 
         if (!response.isSuccessful || body == null || !body.success || body.data == null) {
-            throw IllegalStateException(body?.error ?: body?.message ?: "Insights request failed")
+            throw IllegalStateException(body?.message ?: "Insights request failed")
         }
 
         body.data
     }
 
     private suspend fun resolveDeviceId(): String {
-        return dataStore.deviceIdFlow.first() ?: dataStore.generateAndSaveDeviceId()
+        return dataStore.deviceIdFlow.firstOrNull() ?: dataStore.generateAndSaveDeviceId()
     }
 
     private fun buildSessionPayload(

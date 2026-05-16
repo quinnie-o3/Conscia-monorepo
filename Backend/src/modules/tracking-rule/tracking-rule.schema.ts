@@ -1,12 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
+import { User } from '../user/user.schema';
 
 export type TrackingRuleDocument = HydratedDocument<TrackingRule>;
 
 @Schema({ timestamps: true })
 export class TrackingRule {
-  @Prop({ required: true, index: true })
-  anonymousUserId: string;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name, index: true })
+  userId: Types.ObjectId | string;
 
   @Prop({ required: true, index: true })
   deviceId: string;
@@ -31,12 +32,20 @@ export class TrackingRule {
 
   @Prop({ default: true })
   warningEnabled: boolean;
+
+  @Prop({ default: 0 })
+  extensionMinutes: number;
+
+  @Prop({ default: 0 })
+  extensionCount: number;
+
+  @Prop()
+  lastExtensionDate?: string;
 }
 
-export const TrackingRuleSchema =
-  SchemaFactory.createForClass(TrackingRule);
+export const TrackingRuleSchema = SchemaFactory.createForClass(TrackingRule);
 
 TrackingRuleSchema.index(
-  { anonymousUserId: 1, deviceId: 1, packageName: 1 },
+  { userId: 1, packageName: 1 },
   { unique: true },
 );

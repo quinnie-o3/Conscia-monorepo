@@ -1,13 +1,14 @@
 package com.example.conscia.ui.onboarding
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.conscia.data.AppRepository
 import com.example.conscia.data.TrackedAppsDataStore
 import com.example.conscia.model.TrackedAppInfo
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class ChooseAppsUiState(
     val isLoading: Boolean = true,
@@ -17,9 +18,11 @@ data class ChooseAppsUiState(
     val searchQuery: String = ""
 )
 
-class ChooseAppsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = AppRepository(application)
-    private val dataStore = TrackedAppsDataStore(application)
+@HiltViewModel
+class ChooseAppsViewModel @Inject constructor(
+    private val repository: AppRepository,
+    private val dataStore: TrackedAppsDataStore
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChooseAppsUiState())
     val uiState: StateFlow<ChooseAppsUiState> = _uiState.asStateFlow()

@@ -6,31 +6,29 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.example.conscia.ConsciaAppTheme
-import com.example.conscia.data.AppDatabase
-import com.example.conscia.data.TrackedAppsDataStore
 import com.example.conscia.data.rule.RuleRepository
 import com.example.conscia.ui.intention.IntentionRoute
 import androidx.lifecycle.lifecycleScope
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class IntentionPromptActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var ruleRepository: RuleRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         val appName = intent.getStringExtra("EXTRA_APP_NAME") ?: "App"
         val ruleId = intent.getLongExtra("EXTRA_RULE_ID", -1L)
-        val ruleRepository = RuleRepository(AppDatabase.getDatabase(this).ruleDao())
         
         setContent {
-            val dataStore = remember { TrackedAppsDataStore(this@IntentionPromptActivity) }
-            val isDarkMode by dataStore.isDarkModeFlow.collectAsState(initial = false)
-
-            ConsciaAppTheme(darkTheme = isDarkMode) {
+            ConsciaAppTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

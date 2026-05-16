@@ -248,18 +248,23 @@ export class StatsService {
     deviceId: string,
     from: string,
     to: string,
+    userId?: string,
   ): PipelineStage[] {
     const matchStage: PipelineStage.Match['$match'] = {
-      clientDeviceId: deviceId,
       deviceLocalDate: {
         $gte: from,
         $lte: to,
       },
     };
-    const normalizedAnonymousUserId = normalizeOptionalString(anonymousUserId);
 
-    if (normalizedAnonymousUserId) {
-      matchStage.anonymousUserId = normalizedAnonymousUserId;
+    if (userId) {
+      matchStage.userId = userId;
+    } else {
+      matchStage.clientDeviceId = deviceId;
+      const normalizedAnonymousUserId = normalizeOptionalString(anonymousUserId);
+      if (normalizedAnonymousUserId) {
+        matchStage.anonymousUserId = normalizedAnonymousUserId;
+      }
     }
 
     const sessionIntentionLabel =
@@ -297,7 +302,7 @@ export class StatsService {
         $lookup: {
           from: this.trackingRuleModel.collection.name,
           let: {
-            sessionAnonymousUserId: '$anonymousUserId',
+            sessionUserId: '$userId',
             sessionDeviceId: '$clientDeviceId',
             sessionPackageName: '$packageName',
           },
@@ -307,9 +312,12 @@ export class StatsService {
                 $expr: {
                   $and: [
                     {
-                      $eq: ['$anonymousUserId', '$$sessionAnonymousUserId'],
+                      $cond: [
+                        { $ne: ['$$sessionUserId', null] },
+                        { $eq: ['$userId', '$$sessionUserId'] },
+                        { $eq: ['$deviceId', '$$sessionDeviceId'] }
+                      ]
                     },
-                    { $eq: ['$deviceId', '$$sessionDeviceId'] },
                     { $eq: ['$packageName', '$$sessionPackageName'] },
                     { $eq: ['$trackingEnabled', true] },
                   ],
@@ -475,14 +483,16 @@ export class StatsService {
     anonymousUserId: string | undefined,
     deviceId: string,
     date: string,
+    userId?: string,
   ) {
     const sessions = await this.usageSessionService.findByDate(
       anonymousUserId,
       deviceId,
       date,
+      userId,
     );
-    const rules = await this.trackingRuleService.findActiveRules(
-      anonymousUserId,
+    const rules = await this.trackingRuleService.findAllForUser(
+      userId,
       deviceId,
     );
     const rulesByPackage = this.buildRulesByPackage(rules);
@@ -491,6 +501,7 @@ export class StatsService {
       (sum, session) => sum + (session.durationSeconds || 0),
       0,
     );
+    let totalTrackedSeconds = 0;
     const byPurposeMap = new Map<string, number>();
     const byAppMap = new Map<
       string,
@@ -509,6 +520,10 @@ export class StatsService {
       const category = this.resolveUsageCategory(session, rule);
       const purposeTag = this.resolveTagName(session, rule, category);
       const durationSeconds = session.durationSeconds || 0;
+
+      if (category === 'TRACKED') {
+        totalTrackedSeconds += durationSeconds;
+      }
 
       byPurposeMap.set(
         purposeTag,
@@ -587,6 +602,7 @@ export class StatsService {
       limitWarnings,
       totalDurationSeconds,
       totalUsedMinutes: Math.round(totalDurationSeconds / 60),
+      totalTrackedMinutes: Math.round(totalTrackedSeconds / 60),
     };
   }
 
@@ -598,6 +614,7 @@ export class StatsService {
     period: string | undefined,
     date: string | undefined,
     timeZone?: string,
+    userId?: string,
   ) {
     const range = this.resolveRange(from, to, period, date, timeZone);
     const [aggregateResult, rules] = await Promise.all([
@@ -608,10 +625,11 @@ export class StatsService {
             deviceId,
             range.from,
             range.to,
+            userId,
           ),
         )
         .exec(),
-      this.trackingRuleService.findActiveRules(anonymousUserId, deviceId),
+      this.trackingRuleService.findAllForUser(userId, deviceId),
     ]);
     const result = aggregateResult[0] || {
       details: [],

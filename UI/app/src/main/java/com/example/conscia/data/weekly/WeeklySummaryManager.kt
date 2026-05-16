@@ -1,13 +1,15 @@
 package com.example.conscia.data.weekly
 
-import android.content.Context
 import com.example.conscia.data.usage.UsageStatsRepository
 import java.util.Calendar
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class WeeklySummaryManager(context: Context) {
-    private val usageRepository = UsageStatsRepository(context)
-    private val weeklySummaryStore = WeeklySummaryStore(context)
-
+@Singleton
+class WeeklySummaryManager @Inject constructor(
+    private val usageRepository: UsageStatsRepository,
+    private val weeklySummaryStore: WeeklySummaryStore
+) {
     suspend fun getWeeklySummary(nowMillis: Long = System.currentTimeMillis()): WeeklySummarySnapshot {
         refreshSnapshotIfNeeded(nowMillis)
 

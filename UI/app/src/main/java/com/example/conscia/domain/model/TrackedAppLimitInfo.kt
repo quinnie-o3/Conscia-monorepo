@@ -13,5 +13,7 @@ data class TrackedAppLimitInfo(
     val usagePercent: Float,
     val status: UsageLimitStatus,
     val trackingEnabled: Boolean,
-    val warningEnabled: Boolean
+    val warningEnabled: Boolean,
+    val extensionCount: Int = 0,
+    val canExtend: Boolean = true
 )

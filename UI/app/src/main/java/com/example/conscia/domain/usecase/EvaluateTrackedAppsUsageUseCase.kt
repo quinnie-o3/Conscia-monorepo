@@ -4,20 +4,35 @@ import com.example.conscia.data.rule.RuleEntity
 import com.example.conscia.domain.model.TrackedAppLimitInfo
 import com.example.conscia.domain.model.UsageLimitStatus
 import com.example.conscia.model.AppUsageInfo
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import javax.inject.Inject
 import kotlin.math.max
 
-class EvaluateTrackedAppsUsageUseCase {
+class EvaluateTrackedAppsUsageUseCase @Inject constructor() {
     
+    private val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+
     fun execute(
         rules: List<RuleEntity>,
         usageStats: List<AppUsageInfo>
     ): List<TrackedAppLimitInfo> {
+        val today = dateFormatter.format(Date())
+
         return rules
             .filter { it.trackingEnabled }
             .map { rule ->
                 val usage = usageStats.find { it.packageName == rule.packageName }
                 val todayUsageMillis = usage?.totalTimeInForegroundMillis ?: 0L
-                val dailyLimitMillis = rule.dailyLimitMinutes.toLong() * 60 * 1000
+                
+                // Calculate effective limit: base limit + extensions (if extension is for today)
+                val isExtensionForToday = rule.lastExtensionDate == today
+                val extensionMins = if (isExtensionForToday) rule.extensionMinutes else 0
+                val extensionCount = if (isExtensionForToday) rule.extensionCount else 0
+                
+                val effectiveLimitMinutes = rule.dailyLimitMinutes + extensionMins
+                val dailyLimitMillis = effectiveLimitMinutes.toLong() * 60 * 1000
                 
                 val usagePercent = if (dailyLimitMillis > 0) {
                     todayUsageMillis.toFloat() / dailyLimitMillis
@@ -37,14 +52,16 @@ class EvaluateTrackedAppsUsageUseCase {
                     appName = rule.appName,
                     intentionLabel = rule.intentionLabel,
                     todayUsageMillis = todayUsageMillis,
-                    dailyLimitMinutes = rule.dailyLimitMinutes,
+                    dailyLimitMinutes = effectiveLimitMinutes,
                     dailyLimitMillis = dailyLimitMillis,
                     remainingMillis = max(0L, dailyLimitMillis - todayUsageMillis),
                     exceededMillis = max(0L, todayUsageMillis - dailyLimitMillis),
                     usagePercent = usagePercent,
                     status = status,
                     trackingEnabled = rule.trackingEnabled,
-                    warningEnabled = rule.warningEnabled
+                    warningEnabled = rule.warningEnabled,
+                    extensionCount = extensionCount,
+                    canExtend = extensionCount < 3
                 )
             }
             .sortedWith(

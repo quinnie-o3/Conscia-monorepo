@@ -2,11 +2,11 @@ package com.example.conscia.data.usage
 
 import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.content.pm.PackageManager
 import com.example.conscia.model.AppUsageInfo
 import com.example.conscia.model.DailyAppUsageSnapshot
 import com.example.conscia.model.DailyUsagePoint
 import com.example.conscia.util.DateRangeUtils
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Calendar
@@ -14,8 +14,11 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.text.SimpleDateFormat
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class UsageStatsRepository(private val context: Context) {
+@Singleton
+class UsageStatsRepository @Inject constructor(@ApplicationContext private val context: Context) {
     private val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
     private val packageManager = context.packageManager
 
@@ -36,7 +39,6 @@ class UsageStatsRepository(private val context: Context) {
 
     suspend fun getWeeklyUsageBreakdown(): List<DailyUsagePoint> = withContext(Dispatchers.IO) {
         val result = mutableListOf<DailyUsagePoint>()
-        val calendar = Calendar.getInstance()
         
         for (i in 0..6) {
             val dayCalendar = Calendar.getInstance().apply {

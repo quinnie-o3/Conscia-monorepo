@@ -11,8 +11,12 @@ import androidx.core.app.NotificationManagerCompat
 import com.example.conscia.MainActivity
 import com.example.conscia.R
 import com.example.conscia.presentation.warning.UsageLimitWarningActivity
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class ConsciaNotificationManager(private val context: Context) {
+@Singleton
+class ConsciaNotificationManager @Inject constructor(@ApplicationContext private val context: Context) {
 
     companion object {
         const val CHANNEL_ID = "usage_limit_warning"

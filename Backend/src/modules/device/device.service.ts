@@ -25,8 +25,10 @@ export class DeviceService {
       },
       {
         $set: {
-          ...dto,
           anonymousUserId,
+          deviceId: dto.deviceId,
+          deviceName: dto.deviceName,
+          osVersion: dto.osVersion,
           platform: 'android',
           isActive: true,
         },
@@ -40,20 +42,71 @@ export class DeviceService {
     return device;
   }
 
-  async markSynced(deviceId: string, anonymousUserId?: string) {
+  async findByDeviceId(deviceId: string) {
+    return this.deviceModel.findOne({ deviceId }).exec();
+  }
+
+  async resolveAnonymousUserIdForDevice(deviceId: string) {
+    const device = await this.findByDeviceId(deviceId);
+
+    return resolveAnonymousUserId(device?.anonymousUserId, deviceId);
+  }
+
+  async attachUser(
+    deviceId: string,
+    userId: string,
+    anonymousUserId?: string,
+  ) {
+    const resolvedAnonymousUserId = resolveAnonymousUserId(
+      anonymousUserId,
+      deviceId,
+    );
+
     return this.deviceModel.findOneAndUpdate(
       { deviceId },
       {
         $set: {
-          platform: 'android',
+          anonymousUserId: resolvedAnonymousUserId,
           isActive: true,
-          lastSyncAt: new Date(),
+          platform: 'android',
+          userId,
         },
         $setOnInsert: {
-          anonymousUserId: resolveAnonymousUserId(
-            anonymousUserId,
-            deviceId,
-          ),
+          anonymousUserId: resolvedAnonymousUserId,
+        },
+      },
+      { upsert: true, new: true },
+    );
+  }
+
+  async markSynced(
+    deviceId: string,
+    options?: {
+      anonymousUserId?: string;
+      userId?: string;
+    },
+  ) {
+    const resolvedAnonymousUserId = resolveAnonymousUserId(
+      options?.anonymousUserId,
+      deviceId,
+    );
+    const updateSet: Record<string, unknown> = {
+      anonymousUserId: resolvedAnonymousUserId,
+      isActive: true,
+      lastSyncAt: new Date(),
+      platform: 'android',
+    };
+
+    if (options?.userId) {
+      updateSet.userId = options.userId;
+    }
+
+    return this.deviceModel.findOneAndUpdate(
+      { deviceId },
+      {
+        $set: updateSet,
+        $setOnInsert: {
+          anonymousUserId: resolvedAnonymousUserId,
         },
       },
       { upsert: true, new: true },
