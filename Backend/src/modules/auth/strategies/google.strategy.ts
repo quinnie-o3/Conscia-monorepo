@@ -7,7 +7,7 @@ import {
   VerifyCallback,
 } from 'passport-google-oauth20';
 
-import { GoogleAuthenticatedProfile } from '../interfaces/authenticated-user.interface';
+import type { GoogleAuthenticatedProfile } from '../interfaces/authenticated-user.interface';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {

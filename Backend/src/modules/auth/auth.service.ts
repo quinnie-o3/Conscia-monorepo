@@ -23,7 +23,7 @@ import {
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import {
+import type {
   GoogleAuthenticatedProfile,
   JwtPayload,
 } from './interfaces/authenticated-user.interface';

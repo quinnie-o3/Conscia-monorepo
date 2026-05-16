@@ -18,7 +18,7 @@ import { DailyStatsQueryDto } from './dto/daily-stats-query.dto';
 import { UsageByPurposeQueryDto } from './dto/usage-by-purpose-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 
 @ApiTags('Stats')
 @Controller(['stats', 'v1/stats'])

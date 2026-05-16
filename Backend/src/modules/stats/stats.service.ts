@@ -491,10 +491,12 @@ export class StatsService {
       date,
       userId,
     );
-    const rules = await this.trackingRuleService.findAllForUser(
-      userId,
-      deviceId,
-    );
+    const rules = userId
+      ? await this.trackingRuleService.findAllForUser(userId, deviceId)
+      : await this.trackingRuleService.findActiveRules(
+          anonymousUserId,
+          deviceId,
+        );
     const rulesByPackage = this.buildRulesByPackage(rules);
 
     const totalDurationSeconds = sessions.reduce(
@@ -629,7 +631,12 @@ export class StatsService {
           ),
         )
         .exec(),
-      this.trackingRuleService.findAllForUser(userId, deviceId),
+      userId
+        ? this.trackingRuleService.findAllForUser(userId, deviceId)
+        : this.trackingRuleService.findActiveRules(
+            anonymousUserId,
+            deviceId,
+          ),
     ]);
     const result = aggregateResult[0] || {
       details: [],
