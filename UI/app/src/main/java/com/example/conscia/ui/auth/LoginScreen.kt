@@ -43,7 +43,6 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var showResetDialog by remember { mutableStateOf(false) }
     var googleError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(rememberedEmail) {
@@ -53,7 +52,6 @@ fun LoginScreen(
     }
 
     val authState by viewModel.authState.collectAsState()
-    val passwordResetState by viewModel.passwordResetState.collectAsState()
 
     val googleSignInClient = remember(webClientId) {
         GoogleSignIn.getClient(
@@ -85,20 +83,6 @@ fun LoginScreen(
         if (authState is AuthState.Success) {
             onLoginSuccess()
         }
-    }
-
-    if (showResetDialog) {
-        ForgotPasswordDialog(
-            initialEmail = email,
-            resetState = passwordResetState,
-            onDismiss = {
-                showResetDialog = false
-                viewModel.resetPasswordResetState()
-            },
-            onSubmit = { resetEmail, newPassword ->
-                viewModel.resetPassword(resetEmail, newPassword)
-            }
-        )
     }
 
     Column(
@@ -158,12 +142,6 @@ fun LoginScreen(
             )
         }
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = { showResetDialog = true }) {
-                Text("Forgot password?")
-            }
-        }
-
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
@@ -201,63 +179,7 @@ fun LoginScreen(
         }
 
         TextButton(onClick = onBackClick) {
-            Text("Continue as Guest", color = MaterialTheme.colorScheme.secondary)
+            Text("Continue later", color = MaterialTheme.colorScheme.secondary)
         }
     }
-}
-
-@Composable
-private fun ForgotPasswordDialog(
-    initialEmail: String,
-    resetState: PasswordResetState,
-    onDismiss: () -> Unit,
-    onSubmit: (String, String) -> Unit
-) {
-    var email by remember(initialEmail) { mutableStateOf(initialEmail) }
-    var newPassword by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Reset password") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
-                OutlinedTextField(
-                    value = newPassword,
-                    onValueChange = { newPassword = it },
-                    label = { Text("New password") },
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null)
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
-                if (resetState is PasswordResetState.Error) {
-                    Text(resetState.message, color = MaterialTheme.colorScheme.error)
-                } else if (resetState is PasswordResetState.Success) {
-                    Text(resetState.message, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onSubmit(email, newPassword) }, enabled = resetState !is PasswordResetState.Loading) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
 }

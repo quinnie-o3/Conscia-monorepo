@@ -2,6 +2,7 @@ package com.example.conscia
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -145,7 +146,13 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
                         }
                     },
                     onNavigateToRegister = { navController.navigate("register") },
-                    onBackClick = { navController.navigate("choose_apps") }
+                    onBackClick = {
+                        Toast.makeText(
+                            navController.context,
+                            "Please sign in or create an account to continue.",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
                 ) 
             }
             composable("register") {
@@ -210,7 +217,7 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
                     onNavigateToSection = { section ->
                         when (section) {
                             "manage_intentions" -> navController.navigate("manage_intentions")
-                            "profile" -> navController.navigate("edit_profile")
+                            "user_info" -> navController.navigate("edit_profile")
                             "logout" -> {
                                 scope.launch {
                                     ruleRepository.deleteAllLocalRules()

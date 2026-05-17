@@ -60,8 +60,7 @@ class DashboardViewModel @Inject constructor(
                 if (response.isSuccessful && response.body()?.success == true) {
                     val user = response.body()?.data
                     _uiState.update { it.copy(
-                        userName = user?.displayName ?: "User",
-                        avatarUrl = user?.avatarUrl
+                        userName = user?.displayName ?: "User"
                     ) }
                 }
             } catch (e: Exception) {

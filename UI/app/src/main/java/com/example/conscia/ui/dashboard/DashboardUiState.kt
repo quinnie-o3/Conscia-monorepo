@@ -9,7 +9,6 @@ data class DashboardUiState(
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val userName: String = "Guest",
-    val avatarUrl: String? = null,
     val totalTodayUsageMillis: Long = 0L,
     val trackedTodayUsageMillis: Long = 0L,
     val otherTodayUsageMillis: Long = 0L,

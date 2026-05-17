@@ -71,11 +71,8 @@ export class DeviceService {
           platform: 'android',
           userId,
         },
-        $setOnInsert: {
-          anonymousUserId: resolvedAnonymousUserId,
-        },
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     );
   }
 
@@ -105,11 +102,8 @@ export class DeviceService {
       { deviceId },
       {
         $set: updateSet,
-        $setOnInsert: {
-          anonymousUserId: resolvedAnonymousUserId,
-        },
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     );
   }
 

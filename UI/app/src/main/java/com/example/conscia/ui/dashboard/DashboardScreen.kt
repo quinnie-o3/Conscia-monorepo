@@ -3,6 +3,7 @@ package com.example.conscia.ui.dashboard
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,7 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import coil.compose.AsyncImage
+import com.example.conscia.R
 import com.example.conscia.domain.model.TrackedAppLimitInfo
 import com.example.conscia.domain.model.UsageLimitStatus
 import com.example.conscia.model.AppUsageInfo
@@ -112,7 +114,6 @@ fun DashboardContent(
                 Spacer(modifier = Modifier.height(24.dp))
                 UserHeader(
                     userName = uiState.userName,
-                    avatarUrl = uiState.avatarUrl,
                     onClick = onProfileClick
                 )
             }
@@ -161,7 +162,6 @@ fun DashboardContent(
 @Composable
 fun UserHeader(
     userName: String,
-    avatarUrl: String?,
     onClick: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
@@ -185,23 +185,12 @@ fun UserHeader(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
-                if (!avatarUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = avatarUrl,
-                        contentDescription = "Profile",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
+                Image(
+                    painter = painterResource(id = R.drawable.default_user_avt),
+                    contentDescription = "Profile",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
             }
 
             Column {

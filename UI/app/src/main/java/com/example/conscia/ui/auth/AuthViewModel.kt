@@ -3,18 +3,17 @@ package com.example.conscia.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.conscia.data.TrackedAppsDataStore
+import com.example.conscia.data.remote.DeviceRegistrationRepository
 import com.example.conscia.data.remote.api.ConsciaApiService
 import com.example.conscia.data.remote.dto.LoginRequest
 import com.example.conscia.data.remote.dto.RegisterRequest
 import com.example.conscia.data.remote.dto.GoogleLoginRequest
-import com.example.conscia.data.remote.dto.ResetPasswordRequest
 import com.example.conscia.data.remote.dto.ApiResponse
 import com.example.conscia.data.rule.RuleRepository
 import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,16 +24,10 @@ sealed class AuthState {
     data class Error(val message: String) : AuthState()
 }
 
-sealed class PasswordResetState {
-    object Idle : PasswordResetState()
-    object Loading : PasswordResetState()
-    data class Success(val message: String) : PasswordResetState()
-    data class Error(val message: String) : PasswordResetState()
-}
-
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val dataStore: TrackedAppsDataStore,
+    private val deviceRegistrationRepository: DeviceRegistrationRepository,
     private val apiService: ConsciaApiService,
     private val ruleRepository: RuleRepository
 ) : ViewModel() {
@@ -42,9 +35,6 @@ class AuthViewModel @Inject constructor(
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
-    private val _passwordResetState = MutableStateFlow<PasswordResetState>(PasswordResetState.Idle)
-    val passwordResetState: StateFlow<PasswordResetState> = _passwordResetState
-    
     val lastUsedEmail = dataStore.lastUsedEmailFlow
 
     fun login(email: String, pass: String) {
@@ -52,7 +42,7 @@ class AuthViewModel @Inject constructor(
             _authState.value = AuthState.Loading
             try {
                 // Đảm bảo deviceId tồn tại
-                val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: dataStore.generateAndSaveDeviceId()
+                val deviceId = deviceRegistrationRepository.ensureRegisteredDevice()
                 
                 val response = apiService.login(LoginRequest(email, pass, deviceId))
                 
@@ -91,7 +81,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: dataStore.generateAndSaveDeviceId()
+                val deviceId = deviceRegistrationRepository.ensureRegisteredDevice()
                 
                 val response = apiService.register(RegisterRequest(email, pass, name, deviceId))
                 
@@ -125,7 +115,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: dataStore.generateAndSaveDeviceId()
+                val deviceId = deviceRegistrationRepository.ensureRegisteredDevice()
                 val response = apiService.googleLogin(GoogleLoginRequest(idToken, deviceId))
                 
                 if (response.isSuccessful && response.body()?.success == true) {
@@ -151,23 +141,6 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun resetPassword(email: String, newPassword: String) {
-        viewModelScope.launch {
-            _passwordResetState.value = PasswordResetState.Loading
-            try {
-                val response = apiService.resetPassword(ResetPasswordRequest(email, newPassword))
-                if (response.isSuccessful && response.body()?.success == true) {
-                    _passwordResetState.value = PasswordResetState.Success("Password updated successfully.")
-                } else {
-                    val errorMsg = parseErrorMessage(response)
-                    _passwordResetState.value = PasswordResetState.Error(errorMsg)
-                }
-            } catch (e: Exception) {
-                _passwordResetState.value = PasswordResetState.Error("Failed to reset password")
-            }
-        }
-    }
-
     private fun parseErrorMessage(response: retrofit2.Response<*>): String {
         return try {
             val errorBody = response.errorBody()?.string()
@@ -180,9 +153,5 @@ class AuthViewModel @Inject constructor(
     
     fun resetState() {
         _authState.value = AuthState.Idle
-    }
-
-    fun resetPasswordResetState() {
-        _passwordResetState.value = PasswordResetState.Idle
     }
 }

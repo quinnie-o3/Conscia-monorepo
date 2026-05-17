@@ -21,3 +21,7 @@
 local.properties
 *.hprof
 java_pid*.hprof
+
+hs_err_pid*.log
+
+replay_pid*.log

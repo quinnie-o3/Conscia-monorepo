@@ -15,8 +15,6 @@ import javax.inject.Inject
 data class ProfileUiState(
     val user: UserData? = null,
     val isLoading: Boolean = false,
-    val isSaving: Boolean = false,
-    val saveSuccess: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -46,28 +44,5 @@ class ProfileViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
             }
         }
-    }
-
-    fun updateProfile(name: String, avatarUrl: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isSaving = true, errorMessage = null) }
-            try {
-                val response = apiService.updateUserProfile(mapOf(
-                    "displayName" to name,
-                    "avatarUrl" to avatarUrl
-                ))
-                if (response.isSuccessful && response.body()?.success == true) {
-                    _uiState.update { it.copy(user = response.body()?.data, isSaving = false, saveSuccess = true) }
-                } else {
-                    _uiState.update { it.copy(isSaving = false, errorMessage = "Update failed") }
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isSaving = false, errorMessage = e.message) }
-            }
-        }
-    }
-    
-    fun resetSaveSuccess() {
-        _uiState.update { it.copy(saveSuccess = false) }
     }
 }

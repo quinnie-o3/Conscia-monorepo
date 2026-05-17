@@ -90,7 +90,7 @@ fun SettingsRoute(
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
                                 Text("User Info", fontWeight = FontWeight.Bold)
-                                Text("View details and edit avatar", style = MaterialTheme.typography.bodySmall)
+                                Text("View account details", style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
