@@ -9,6 +9,7 @@ import com.example.conscia.data.remote.dto.LoginRequest
 import com.example.conscia.data.remote.dto.RegisterRequest
 import com.example.conscia.data.remote.dto.GoogleLoginRequest
 import com.example.conscia.data.remote.dto.ApiResponse
+import com.example.conscia.data.remote.dto.ResetPasswordRequest
 import com.example.conscia.data.rule.RuleRepository
 import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,19 +42,21 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                // Đảm bảo deviceId tồn tại
                 val deviceId = deviceRegistrationRepository.ensureRegisteredDevice()
-                
                 val response = apiService.login(LoginRequest(email, pass, deviceId))
                 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val authData = response.body()?.data!!
-                    dataStore.saveAuthToken(authData.accessToken, authData.user.email)
+                    // Save full user info to fix "Guest" and missing avatar issues
+                    dataStore.saveAuthToken(
+                        authData.accessToken,
+                        authData.user.email,
+                        authData.user.displayName,
+                        ""
+                    )
                     
-                    // Chuyển sang Success ngay lập tức để người dùng vào Dashboard
                     _authState.value = AuthState.Success(authData.user.email)
                     
-                    // Chạy đồng bộ rules ở background
                     viewModelScope.launch {
                         try {
                             ruleRepository.syncRulesFromServer()
@@ -70,7 +73,7 @@ class AuthViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _authState.value = AuthState.Error(
-                    if (e is java.net.SocketTimeoutException) "Server is starting up (Cold Start). Please wait a moment and try again."
+                    if (e is java.net.SocketTimeoutException) "Server is taking too long. Please try again in a moment."
                     else "Connection error. Please check your internet."
                 )
             }
@@ -82,12 +85,17 @@ class AuthViewModel @Inject constructor(
             _authState.value = AuthState.Loading
             try {
                 val deviceId = deviceRegistrationRepository.ensureRegisteredDevice()
-                
                 val response = apiService.register(RegisterRequest(email, pass, name, deviceId))
                 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val authData = response.body()?.data!!
-                    dataStore.saveAuthToken(authData.accessToken, authData.user.email)
+                    // Save full user info
+                    dataStore.saveAuthToken(
+                        authData.accessToken,
+                        authData.user.email,
+                        authData.user.displayName,
+                        ""
+                    )
                     
                     _authState.value = AuthState.Success(authData.user.email)
                     
@@ -103,10 +111,7 @@ class AuthViewModel @Inject constructor(
                     _authState.value = AuthState.Error(errorMsg)
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error(
-                    if (e is java.net.SocketTimeoutException) "Server is starting up. Please try again in a minute."
-                    else "Connection error."
-                )
+                _authState.value = AuthState.Error("Connection error. Please try again.")
             }
         }
     }
@@ -120,7 +125,13 @@ class AuthViewModel @Inject constructor(
                 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val authData = response.body()?.data!!
-                    dataStore.saveAuthToken(authData.accessToken, authData.user.email)
+                    // Save full user info (Fixes Google User appearing as Guest)
+                    dataStore.saveAuthToken(
+                        authData.accessToken,
+                        authData.user.email,
+                        authData.user.displayName,
+                        ""
+                    )
                     
                     _authState.value = AuthState.Success(authData.user.email)
                     

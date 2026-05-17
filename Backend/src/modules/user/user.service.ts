@@ -13,10 +13,11 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 export type PublicUser = {
   avatarUrl?: string;
-  displayName?: string;
-  email?: string;
+  displayName: string;
+  email: string;
   googleId?: string;
   id: string;
+  isOnboardingCompleted: boolean;
 };
 
 export type GoogleProfileData = {
@@ -46,18 +47,22 @@ export class UserService {
     return email.trim().toLowerCase();
   }
 
-  private normalizePublicUser(user: UserDocument | User) {
+  private normalizePublicUser(user: UserDocument | User): PublicUser {
     const plainUser =
       'toObject' in user
         ? (user.toObject() as any)
         : ({ ...user } as any);
 
+    const email = plainUser.email || '';
+    const fallbackName = email.split('@')[0] || 'User';
+
     return {
       avatarUrl: plainUser.avatarUrl,
-      displayName: plainUser.displayName,
-      email: plainUser.email,
+      displayName: plainUser.displayName || fallbackName,
+      email: email,
       googleId: plainUser.googleId,
       id: (plainUser._id || plainUser.id).toString(),
+      isOnboardingCompleted: plainUser.isOnboardingCompleted || false,
     };
   }
 
@@ -90,13 +95,14 @@ export class UserService {
     }
 
     const password = await bcrypt.hash(input.password, this.saltRounds);
+    const displayName = normalizeOptionalString(input.displayName) || email.split('@')[0];
 
     const user = await this.userModel.create({
       avatarUrl: normalizeOptionalString(input.avatarUrl),
-      displayName:
-        normalizeOptionalString(input.displayName) || email.split('@')[0],
+      displayName: displayName,
       email,
       password,
+      isOnboardingCompleted: false,
     });
 
     return user;
@@ -123,31 +129,15 @@ export class UserService {
   }
 
   async createGoogleUser(profile: GoogleProfileData) {
-    if (!profile.email) {
-      throw new ConflictException(
-        'Google account does not provide an email address',
-      );
-    }
-
-    const email = this.normalizeEmail(profile.email);
-    const existingUser = await this.userModel.exists({ email });
-
-    if (existingUser) {
-      // If email exists but no googleId, we might want to link them or throw conflict
-      // For simplicity, let's link if it's the same email
-      const user = await this.userModel.findOne({ email });
-      if (user) {
-         return this.attachGoogleAccount(user.id, profile);
-      }
-      throw new ConflictException('Email is already registered');
-    }
+    const email = profile.email ? this.normalizeEmail(profile.email) : undefined;
+    const displayName = normalizeOptionalString(profile.displayName) || email?.split('@')[0] || 'Google User';
 
     return this.userModel.create({
       avatarUrl: normalizeOptionalString(profile.avatarUrl),
-      displayName:
-        normalizeOptionalString(profile.displayName) || email.split('@')[0],
+      displayName: displayName,
       email,
       googleId: profile.googleId,
+      isOnboardingCompleted: false,
     });
   }
 
@@ -157,26 +147,13 @@ export class UserService {
       .exec();
   }
 
-  async attachGoogleAccount(
-    userId: string,
-    profile: GoogleProfileData,
-  ) {
-    const update: Record<string, unknown> = {
-      googleId: profile.googleId,
-    };
-    const displayName = normalizeOptionalString(profile.displayName);
-    const avatarUrl = normalizeOptionalString(profile.avatarUrl);
+  async attachGoogleAccount(userId: string, profile: GoogleProfileData) {
+    const update: any = { googleId: profile.googleId };
 
-    if (displayName) {
-      update.displayName = displayName;
-    }
-
-    if (avatarUrl) {
-      update.avatarUrl = avatarUrl;
-    }
-
-    if (profile.email) {
-      update.email = this.normalizeEmail(profile.email);
+    const user = await this.userModel.findById(userId);
+    if (user) {
+        if (!user.displayName && profile.displayName) update.displayName = profile.displayName;
+        if (!user.avatarUrl && profile.avatarUrl) update.avatarUrl = profile.avatarUrl;
     }
 
     return this.userModel
@@ -184,7 +161,8 @@ export class UserService {
       .exec();
   }
 
-  toPublicUser(user: UserDocument | User) {
+  toPublicUser(user: UserDocument | User): PublicUser | null {
+    if (!user) return null;
     return this.normalizePublicUser(user);
   }
 }

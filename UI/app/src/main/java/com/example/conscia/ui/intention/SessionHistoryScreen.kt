@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
@@ -24,6 +25,7 @@ import com.example.conscia.data.remote.dto.AppUsageStats
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionHistoryScreen(
+    onBackClick: (() -> Unit)? = null,
     viewModel: SessionHistoryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -31,7 +33,14 @@ fun SessionHistoryScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Usage Sessions", fontWeight = FontWeight.Bold) }
+                title = { Text("Usage Sessions", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    if (onBackClick != null) {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                }
             )
         }
     ) { padding ->

@@ -21,6 +21,8 @@ data class AppPreferencesState(
     val deviceId: String? = null,
     val accessToken: String? = null,
     val userEmail: String? = null,
+    val userName: String? = null,
+    val avatarUrl: String? = null,
     val lastUsedEmail: String? = null
 )
 
@@ -32,6 +34,8 @@ class TrackedAppsDataStore(private val context: Context) {
         val DEVICE_ID_KEY = stringPreferencesKey("device_id")
         val ACCESS_TOKEN_KEY = stringPreferencesKey("access_token")
         val USER_EMAIL_KEY = stringPreferencesKey("user_email")
+        val USER_NAME_KEY = stringPreferencesKey("user_name")
+        val AVATAR_URL_KEY = stringPreferencesKey("avatar_url")
         val LAST_USED_EMAIL_KEY = stringPreferencesKey("last_used_email")
     }
 
@@ -44,20 +48,33 @@ class TrackedAppsDataStore(private val context: Context) {
                 deviceId = preferences[DEVICE_ID_KEY],
                 accessToken = preferences[ACCESS_TOKEN_KEY],
                 userEmail = preferences[USER_EMAIL_KEY],
+                userName = preferences[USER_NAME_KEY],
+                avatarUrl = preferences[AVATAR_URL_KEY],
                 lastUsedEmail = preferences[LAST_USED_EMAIL_KEY]
             )
         }
 
     val accessTokenFlow: Flow<String?> = appPreferencesFlow.map { it.accessToken }
     val selectedPackagesFlow: Flow<Set<String>> = appPreferencesFlow.map { it.selectedPackages }
+    val userNameFlow: Flow<String?> = appPreferencesFlow.map { it.userName }
+    val avatarUrlFlow: Flow<String?> = appPreferencesFlow.map { it.avatarUrl }
     val isDarkModeFlow: Flow<Boolean> = appPreferencesFlow.map { it.isDarkMode }
     val lastUsedEmailFlow: Flow<String?> = appPreferencesFlow.map { it.lastUsedEmail }
 
-    suspend fun saveAuthToken(token: String, email: String) {
+    suspend fun saveAuthToken(token: String, email: String, name: String?, avatar: String?) {
         context.dataStore.edit { preferences ->
             preferences[ACCESS_TOKEN_KEY] = token
             preferences[USER_EMAIL_KEY] = email
-            preferences[LAST_USED_EMAIL_KEY] = email // Remember for next time
+            preferences[USER_NAME_KEY] = name ?: ""
+            preferences[AVATAR_URL_KEY] = avatar ?: ""
+            preferences[LAST_USED_EMAIL_KEY] = email
+        }
+    }
+
+    suspend fun updateUserInfo(name: String, avatar: String) {
+        context.dataStore.edit { preferences ->
+            preferences[USER_NAME_KEY] = name
+            preferences[AVATAR_URL_KEY] = avatar
         }
     }
 
@@ -65,7 +82,8 @@ class TrackedAppsDataStore(private val context: Context) {
         context.dataStore.edit { preferences ->
             preferences.remove(ACCESS_TOKEN_KEY)
             preferences.remove(USER_EMAIL_KEY)
-            // LAST_USED_EMAIL_KEY is NOT removed to remember it for suggestions
+            preferences.remove(USER_NAME_KEY)
+            preferences.remove(AVATAR_URL_KEY)
         }
     }
 

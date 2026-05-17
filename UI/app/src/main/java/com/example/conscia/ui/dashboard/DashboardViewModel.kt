@@ -3,6 +3,7 @@ package com.example.conscia.ui.dashboard
 import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.conscia.data.TrackedAppsDataStore
 import com.example.conscia.data.remote.api.ConsciaApiService
 import com.example.conscia.data.rule.RuleRepository
 import com.example.conscia.data.usage.UsagePermissionHelper
@@ -29,7 +30,8 @@ class DashboardViewModel @Inject constructor(
     private val weeklySummaryManager: WeeklySummaryManager,
     private val evaluateUseCase: EvaluateTrackedAppsUsageUseCase,
     private val ruleRepository: RuleRepository,
-    private val apiService: ConsciaApiService
+    private val apiService: ConsciaApiService,
+    private val dataStore: TrackedAppsDataStore
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -38,8 +40,17 @@ class DashboardViewModel @Inject constructor(
     private val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
     init {
+        // Collect user info from DataStore for immediate display
+        viewModelScope.launch {
+            dataStore.userNameFlow.collect { name ->
+                _uiState.update { it.copy(
+                    userName = if (name.isNullOrBlank()) "User" else name
+                ) }
+            }
+        }
+        
         refresh()
-        loadUserProfile()
+        loadUserProfile() // Fetch latest from API
     }
 
     fun refresh() {
@@ -59,12 +70,12 @@ class DashboardViewModel @Inject constructor(
                 val response = apiService.getUserProfile()
                 if (response.isSuccessful && response.body()?.success == true) {
                     val user = response.body()?.data
-                    _uiState.update { it.copy(
-                        userName = user?.displayName ?: "User"
-                    ) }
+                    if (user != null) {
+                        dataStore.updateUserInfo(user.displayName ?: "", "")
+                    }
                 }
             } catch (e: Exception) {
-                // Keep default Guest
+                // Ignore background fetch errors
             }
         }
     }

@@ -14,7 +14,8 @@ class DeviceRegistrationRepository @Inject constructor(
     private val dataStore: TrackedAppsDataStore
 ) {
     suspend fun ensureRegisteredDevice(): String {
-        val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: dataStore.generateAndSaveDeviceId()
+        val deviceId = dataStore.deviceIdFlow.firstOrNull()
+            ?: dataStore.generateAndSaveDeviceId()
 
         runCatching {
             apiService.registerDevice(

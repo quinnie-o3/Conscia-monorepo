@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Rule
 import androidx.compose.material.icons.outlined.Lightbulb
@@ -32,6 +34,7 @@ fun RulesRoute(
     onBackClick: () -> Unit,
     onCreateRuleClick: () -> Unit,
     onEditRuleClick: (Long) -> Unit,
+    onSessionsClick: () -> Unit,
     viewModel: RulesViewModel = viewModel()
 ) {
     val rules by viewModel.rulesState.collectAsState()
@@ -41,7 +44,7 @@ fun RulesRoute(
         containerColor = colorScheme.background,
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Rules", fontWeight = FontWeight.Bold) },
+                title = { Text("Tracked Apps", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -73,16 +76,59 @@ fun RulesRoute(
             ) {
                 item {
                     Text(
-                        text = "Create rules to limit distractions and stay aligned with your intention.",
+                        text = "Apps monitored by your rules. Open an app to adjust its daily limit or intention.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
+                item {
+                    SessionsEntryCard(onClick = onSessionsClick)
+                }
                 items(rules) { rule ->
                     RuleCard(rule, onClick = { onEditRuleClick(rule.id) })
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SessionsEntryCard(onClick: () -> Unit) {
+    val colorScheme = MaterialTheme.colorScheme
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.tintedSurface(colorScheme.primary, Color(0xFFEAF5EA))
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.size(48.dp).background(colorScheme.surface, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.History,
+                    contentDescription = null,
+                    tint = colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Usage Sessions", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text(
+                    "Today usage history for tracked apps",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(Icons.Default.ChevronRight, null, tint = colorScheme.onSurfaceVariant)
         }
     }
 }

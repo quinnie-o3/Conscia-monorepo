@@ -31,6 +31,7 @@ data class AuthResponse(
 data class UserData(
     val id: String,
     val email: String,
-    val displayName: String,
-    val avatarUrl: String? = null
+    val displayName: String?,
+    val avatarUrl: String? = null,
+    val isOnboardingCompleted: Boolean = false
 )

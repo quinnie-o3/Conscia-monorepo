@@ -29,13 +29,13 @@ import com.example.conscia.ui.onboarding.OnboardingRoute
 import com.example.conscia.ui.onboarding.ChooseAppsToTrackScreen
 import com.example.conscia.ui.onboarding.StarterRulesRoute
 import com.example.conscia.ui.permissions.PermissionsRoute
-import com.example.conscia.ui.rules.RulesRoute
 import com.example.conscia.ui.rules.CreateEditRuleScreen
+import com.example.conscia.ui.rules.RulesRoute
 import com.example.conscia.ui.intention.SessionHistoryScreen
 import com.example.conscia.ui.insights.InsightsRoute
 import com.example.conscia.ui.settings.SettingsRoute
 import com.example.conscia.ui.settings.ManageIntentionsScreen
-import com.example.conscia.ui.settings.EditProfileScreen
+import com.example.conscia.ui.settings.UserInformationScreen
 import com.example.conscia.ui.auth.LoginScreen
 import com.example.conscia.ui.auth.RegisterScreen
 import com.example.conscia.data.rule.RuleRepository
@@ -77,7 +77,7 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     
-    val screensWithBottomBar = listOf("dashboard", "rules", "sessions", "insights", "settings")
+    val screensWithBottomBar = listOf("dashboard", "rules", "insights", "settings")
     val showBottomBar = currentDestination?.route?.split("/")?.firstOrNull() in screensWithBottomBar
 
     if (isOnboardingCompleted == null) {
@@ -104,8 +104,7 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp) {
                     val items = listOf(
                         Triple("dashboard", "Home", Icons.Default.Dashboard),
-                        Triple("rules", "Rules", Icons.Default.Rule),
-                        Triple("sessions", "Sessions", Icons.Default.History),
+                        Triple("rules", "Tracked", Icons.Default.Rule),
                         Triple("insights", "Insights", Icons.Default.Analytics),
                         Triple("settings", "Settings", Icons.Default.Settings)
                     )
@@ -193,7 +192,8 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
                 RulesRoute(
                     onBackClick = { navController.popBackStack() }, 
                     onCreateRuleClick = { navController.navigate("create_rule/-1") }, 
-                    onEditRuleClick = { id -> navController.navigate("create_rule/$id") }
+                    onEditRuleClick = { id -> navController.navigate("create_rule/$id") },
+                    onSessionsClick = { navController.navigate("sessions") }
                 ) 
             }
             composable("create_rule/{ruleId}", arguments = listOf(navArgument("ruleId") { type = NavType.LongType })) { backStack ->
@@ -203,7 +203,9 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
                     onSelectAppClick = { /* Navigate to app selection if needed */ }
                 )
             }
-            composable("sessions") { SessionHistoryScreen() }
+            composable("sessions") {
+                SessionHistoryScreen(onBackClick = { navController.popBackStack() })
+            }
             composable("insights") { InsightsRoute() }
             
             // --- SETTINGS ---
@@ -217,7 +219,7 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
                     onNavigateToSection = { section ->
                         when (section) {
                             "manage_intentions" -> navController.navigate("manage_intentions")
-                            "user_info" -> navController.navigate("edit_profile")
+                            "user_info" -> navController.navigate("user_information")
                             "logout" -> {
                                 scope.launch {
                                     ruleRepository.deleteAllLocalRules()
@@ -232,8 +234,8 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
             composable("manage_intentions") {
                 ManageIntentionsScreen(onBackClick = { navController.popBackStack() })
             }
-            composable("edit_profile") {
-                EditProfileScreen(onBackClick = { navController.popBackStack() })
+            composable("user_information") {
+                UserInformationScreen(onBackClick = { navController.popBackStack() })
             }
         }
     }
