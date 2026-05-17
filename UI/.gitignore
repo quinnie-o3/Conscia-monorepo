@@ -1,27 +1,51 @@
+# Android Studio / IntelliJ
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+.gradle/
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
 
-# Monorepo ignores
-/backend/node_modules/
-/backend/dist/
-/backend/.env
-/Frontend/build/
+# Local machine config
 local.properties
+/local.properties
+
+# macOS
+.DS_Store
+
+# Android build outputs
+/build/
+/UI/build/
+/UI/app/build/
+*/build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Crash / heap dump logs
 *.hprof
 java_pid*.hprof
-
 hs_err_pid*.log
-
 replay_pid*.log
+
+# Keystore / signing keys
+*.jks
+*.keystore
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Backend / Node
+node_modules/
+dist/
+/Backend/node_modules/
+/Backend/dist/
+/Backend/.env
+
+# Tool / editor folders that usually should not be shared
+.vscode/
+.tools/
