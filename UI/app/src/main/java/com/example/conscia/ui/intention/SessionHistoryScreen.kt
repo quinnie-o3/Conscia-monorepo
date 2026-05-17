@@ -50,7 +50,7 @@ fun SessionHistoryScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
-                    SummaryCard(uiState.totalMinutes)
+                    SummaryCard(uiState.totalFocusMinutes)
                 }
                 
                 item {

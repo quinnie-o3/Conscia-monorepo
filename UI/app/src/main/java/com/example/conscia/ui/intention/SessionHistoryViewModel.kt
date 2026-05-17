@@ -19,7 +19,7 @@ import javax.inject.Inject
 data class SessionHistoryUiState(
     val isLoading: Boolean = false,
     val usageStats: List<AppUsageStats> = emptyList(),
-    val totalMinutes: Int = 0,
+    val totalFocusMinutes: Int = 0, // Thay đổi sang Focus Minutes
     val errorMessage: String? = null
 )
 
@@ -52,7 +52,7 @@ class SessionHistoryViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             usageStats = data?.byApp ?: emptyList(),
-                            totalMinutes = data?.totalUsedMinutes ?: 0,
+                            totalFocusMinutes = data?.totalTrackedMinutes ?: 0, // Lấy từ field totalTrackedMinutes của Backend
                             errorMessage = null
                         )
                     }

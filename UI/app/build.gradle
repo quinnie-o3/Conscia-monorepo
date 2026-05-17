@@ -6,6 +6,9 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+def releaseApiBaseUrl = project.findProperty("CONSCIA_RELEASE_API_BASE_URL") ?: "https://conscia-monorepo-2.onrender.com/api/"
+def debugApiBaseUrl = project.findProperty("CONSCIA_DEBUG_API_BASE_URL") ?: releaseApiBaseUrl
+
 android {
     namespace 'com.example.conscia'
     compileSdk 34
@@ -21,8 +24,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField "String", "API_BASE_URL", "\"${debugApiBaseUrl}\""
+        }
         release {
             minifyEnabled false
+            buildConfigField "String", "API_BASE_URL", "\"${releaseApiBaseUrl}\""
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -31,7 +38,10 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = '17' }
-    buildFeatures { compose true }
+    buildFeatures {
+        compose true
+        buildConfig true
+    }
 }
 
 dependencies {
