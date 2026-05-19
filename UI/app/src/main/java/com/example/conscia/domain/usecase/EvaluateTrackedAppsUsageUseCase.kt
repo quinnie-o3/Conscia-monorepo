@@ -52,6 +52,7 @@ class EvaluateTrackedAppsUsageUseCase @Inject constructor() {
                     appName = rule.appName,
                     intentionLabel = rule.intentionLabel,
                     todayUsageMillis = todayUsageMillis,
+                    todayLaunchCount = usage?.launchCount ?: 0,
                     dailyLimitMinutes = effectiveLimitMinutes,
                     dailyLimitMillis = dailyLimitMillis,
                     remainingMillis = max(0L, dailyLimitMillis - todayUsageMillis),

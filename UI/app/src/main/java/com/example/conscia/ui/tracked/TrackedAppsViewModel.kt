@@ -8,6 +8,7 @@ import com.example.conscia.domain.model.TrackedAppLimitInfo
 import com.example.conscia.domain.usecase.EvaluateTrackedAppsUsageUseCase
 import com.example.conscia.domain.usecase.GetRulesUseCase
 import com.example.conscia.domain.usecase.GetTodayUsageUseCase
+import com.example.conscia.domain.usecase.DeleteRuleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +28,7 @@ data class TrackedAppDetailUiState(
     val isLoading: Boolean = true,
     val rule: RuleEntity? = null,
     val todayUsageMillis: Long = 0L,
+    val todayLaunchCount: Int = 0,
     val isEditingLimit: Boolean = false,
     val isEditingReason: Boolean = false,
     val limitHours: String = "0",
@@ -73,7 +75,7 @@ class TrackedAppsViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isLoading = false, errorMessage = "Failed to load tracked apps: ${e.message}")
+                    it.copy(isLoading = false, errorMessage = "Failed to load rules: ${e.message}")
                 }
             }
         }
@@ -83,6 +85,7 @@ class TrackedAppsViewModel @Inject constructor(
 @HiltViewModel
 class TrackedAppDetailViewModel @Inject constructor(
     private val ruleRepository: RuleRepository,
+    private val deleteRuleUseCase: DeleteRuleUseCase,
     private val getTodayUsageUseCase: GetTodayUsageUseCase
 ) : ViewModel() {
 
@@ -106,18 +109,22 @@ class TrackedAppDetailViewModel @Inject constructor(
                 val appUsageMillis = todayUsage
                     .firstOrNull { it.packageName == rule?.packageName }
                     ?.totalTimeInForegroundMillis ?: 0L
+                val appLaunchCount = todayUsage
+                    .firstOrNull { it.packageName == rule?.packageName }
+                    ?.launchCount ?: 0
 
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         rule = rule,
                         todayUsageMillis = appUsageMillis,
+                        todayLaunchCount = appLaunchCount,
                         limitHours = ((rule?.dailyLimitMinutes ?: 15) / 60).toString(),
                         limitMinutes = ((rule?.dailyLimitMinutes ?: 15) % 60).toString(),
                         reason = rule?.intentionLabel.orEmpty(),
                         isEditingLimit = false,
                         isEditingReason = false,
-                        errorMessage = if (rule == null) "Tracked app not found." else null
+                        errorMessage = if (rule == null) "Rule not found." else null
                     )
                 }
             } catch (e: Exception) {
@@ -238,6 +245,14 @@ class TrackedAppDetailViewModel @Inject constructor(
                     errorMessage = null
                 )
             }
+        }
+    }
+
+    fun deleteRule(onDeleted: () -> Unit) {
+        val rule = _uiState.value.rule ?: return
+        viewModelScope.launch {
+            deleteRuleUseCase(rule)
+            onDeleted()
         }
     }
 }

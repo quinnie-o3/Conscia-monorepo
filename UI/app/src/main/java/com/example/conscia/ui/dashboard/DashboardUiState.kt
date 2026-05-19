@@ -12,6 +12,7 @@ data class DashboardUiState(
     val totalTodayUsageMillis: Long = 0L,
     val trackedTodayUsageMillis: Long = 0L,
     val otherTodayUsageMillis: Long = 0L,
+    val hasTrackedRules: Boolean = false,
     val todayTopApps: List<AppUsageInfo> = emptyList(),
     val trackedAppStatuses: List<TrackedAppLimitInfo> = emptyList(),
     val weeklyTotalUsageMillis: Long = 0L,

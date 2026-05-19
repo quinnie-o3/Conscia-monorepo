@@ -7,7 +7,6 @@ import com.example.conscia.data.TrackedAppsDataStore
 import com.example.conscia.data.remote.api.ConsciaApiService
 import com.example.conscia.data.rule.RuleRepository
 import com.example.conscia.data.usage.UsagePermissionHelper
-import com.example.conscia.data.weekly.WeeklySummaryManager
 import com.example.conscia.domain.model.UsageLimitStatus
 import com.example.conscia.domain.usecase.EvaluateTrackedAppsUsageUseCase
 import com.example.conscia.domain.usecase.GetRulesUseCase
@@ -27,7 +26,6 @@ class DashboardViewModel @Inject constructor(
     private val getTodayUsageUseCase: GetTodayUsageUseCase,
     private val getWeeklyUsageUseCase: GetWeeklyUsageUseCase,
     private val getRulesUseCase: GetRulesUseCase,
-    private val weeklySummaryManager: WeeklySummaryManager,
     private val evaluateUseCase: EvaluateTrackedAppsUsageUseCase,
     private val ruleRepository: RuleRepository,
     private val apiService: ConsciaApiService,
@@ -84,44 +82,46 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
+                ruleRepository.syncRulesFromServer()
                 val todayUsage = getTodayUsageUseCase()
-                val totalToday = todayUsage.sumOf { it.totalTimeInForegroundMillis }
-                
-                val weeklyBreakdown = getWeeklyUsageUseCase()
-                
                 val allRules = getRulesUseCase().first()
                 val trackedPackages = allRules.filter { it.trackingEnabled }.map { it.packageName }.toSet()
-                
+                val hasTrackedRules = trackedPackages.isNotEmpty()
+                val trackedTodayUsage = if (hasTrackedRules) {
+                    todayUsage.filter { it.packageName in trackedPackages }
+                } else {
+                    emptyList()
+                }
+                val totalToday = trackedTodayUsage.sumOf { it.totalTimeInForegroundMillis }
+                val weeklyBreakdown = if (hasTrackedRules) {
+                    getWeeklyUsageUseCase(trackedPackages)
+                } else {
+                    emptyList()
+                }
+
                 val trackedStatuses = evaluateUseCase.execute(allRules, todayUsage)
-                val trackedTodayUsageMillis = todayUsage
-                    .filter { it.packageName in trackedPackages }
-                    .sumOf { it.totalTimeInForegroundMillis }
-                val otherTodayUsageMillis = (totalToday - trackedTodayUsageMillis).coerceAtLeast(0L)
-                val weeklySummary = weeklySummaryManager.getWeeklySummary()
-                
+                val weeklyTotalUsageMillis = weeklyBreakdown.sumOf { it.totalForegroundMillis }
                 val exceeded = trackedStatuses.count { it.status == UsageLimitStatus.EXCEEDED }
                 val nearLimit = trackedStatuses.count { it.status == UsageLimitStatus.NEAR_LIMIT }
+                val now = System.currentTimeMillis()
 
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
                         hasUsagePermission = true,
                         totalTodayUsageMillis = totalToday,
-                        trackedTodayUsageMillis = trackedTodayUsageMillis,
-                        otherTodayUsageMillis = otherTodayUsageMillis,
-                        todayTopApps = todayUsage,
+                        trackedTodayUsageMillis = totalToday,
+                        otherTodayUsageMillis = 0L,
+                        hasTrackedRules = hasTrackedRules,
+                        todayTopApps = trackedTodayUsage,
                         trackedAppStatuses = trackedStatuses,
-                        weeklyTotalUsageMillis = weeklySummary.totalUsageMillis,
-                        weeklySummaryLabel = buildWeeklySummaryLabel(
-                            weeklySummary.rangeStartMillis,
-                            weeklySummary.rangeEndMillis,
-                            weeklySummary.isLockedSnapshot
-                        ),
-                        hasLockedWeeklySummary = weeklySummary.isLockedSnapshot,
+                        weeklyTotalUsageMillis = weeklyTotalUsageMillis,
+                        weeklySummaryLabel = if (hasTrackedRules) buildLiveWeeklySummaryLabel(now) else "",
+                        hasLockedWeeklySummary = false,
                         weeklyPreview = weeklyBreakdown,
                         exceededCount = exceeded,
                         nearLimitCount = nearLimit,
-                        isEmpty = todayUsage.isEmpty() && trackedStatuses.isEmpty(),
+                        isEmpty = !hasTrackedRules,
                         errorMessage = null
                     )
                 }
@@ -138,30 +138,36 @@ class DashboardViewModel @Inject constructor(
 
     fun extendLimit(ruleId: Long) {
         viewModelScope.launch {
-            val rule = ruleRepository.getRuleById(ruleId) ?: return@launch
-            val today = dateFormatter.format(Date())
-            
-            val currentCount = if (rule.lastExtensionDate == today) rule.extensionCount else 0
-            if (currentCount >= 3) {
-                _uiState.update { it.copy(errorMessage = "Maximum 3 extensions reached for ${rule.appName} today") }
-                return@launch
-            }
+            try {
+                val rule = ruleRepository.getRuleById(ruleId) ?: return@launch
+                val today = dateFormatter.format(Date())
 
-            val updatedRule = if (rule.lastExtensionDate == today) {
-                rule.copy(
-                    extensionMinutes = rule.extensionMinutes + 5,
-                    extensionCount = rule.extensionCount + 1
-                )
-            } else {
-                rule.copy(
-                    extensionMinutes = 5, 
-                    extensionCount = 1,
-                    lastExtensionDate = today
-                )
+                val currentCount = if (rule.lastExtensionDate == today) rule.extensionCount else 0
+                if (currentCount >= 3) {
+                    _uiState.update { it.copy(errorMessage = "Maximum 3 extensions reached for ${rule.appName} today") }
+                    return@launch
+                }
+
+                val updatedRule = if (rule.lastExtensionDate == today) {
+                    rule.copy(
+                        extensionMinutes = rule.extensionMinutes + 5,
+                        extensionCount = rule.extensionCount + 1
+                    )
+                } else {
+                    rule.copy(
+                        extensionMinutes = 5,
+                        extensionCount = 1,
+                        lastExtensionDate = today
+                    )
+                }
+
+                ruleRepository.updateRule(updatedRule)
+                refresh()
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = e.message ?: "Failed to extend rule limit.")
+                }
             }
-            
-            ruleRepository.updateRule(updatedRule)
-            refresh()
         }
     }
 
@@ -169,17 +175,16 @@ class DashboardViewModel @Inject constructor(
         UsagePermissionHelper.openUsageAccessSettings(application)
     }
 
-    private fun buildWeeklySummaryLabel(startMillis: Long, endMillis: Long, isLockedSnapshot: Boolean): String {
+    private fun buildLiveWeeklySummaryLabel(nowMillis: Long): String {
+        val startMillis = nowMillis - sevenDaysMillis
+        val endMillis = nowMillis
         val startLabel = weeklyRangeFormatter.format(Date(startMillis))
         val endLabel = weeklyRangeFormatter.format(Date(endMillis))
-        return if (isLockedSnapshot) {
-            "Weekly summary locked at Sunday 08:00 ($startLabel - $endLabel)"
-        } else {
-            "Live 7-day preview ($startLabel - $endLabel)"
-        }
+        return "Live 7-day preview for your rules ($startLabel - $endLabel)"
     }
 
     companion object {
         private val weeklyRangeFormatter = SimpleDateFormat("MMM d", Locale.getDefault())
+        private const val sevenDaysMillis = 7L * 24L * 60L * 60L * 1000L
     }
 }

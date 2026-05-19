@@ -1,6 +1,7 @@
 package com.example.conscia.data.usage
 
 import android.app.usage.UsageStatsManager
+import android.app.usage.UsageEvents
 import android.content.Context
 import com.example.conscia.model.AppUsageInfo
 import com.example.conscia.model.DailyAppUsageSnapshot
@@ -37,7 +38,7 @@ class UsageStatsRepository @Inject constructor(@ApplicationContext private val c
         endTime = endTime
     )
 
-    suspend fun getWeeklyUsageBreakdown(): List<DailyUsagePoint> = withContext(Dispatchers.IO) {
+    suspend fun getWeeklyUsageBreakdown(packageNames: Set<String> = emptySet()): List<DailyUsagePoint> = withContext(Dispatchers.IO) {
         val result = mutableListOf<DailyUsagePoint>()
         
         for (i in 0..6) {
@@ -57,7 +58,12 @@ class UsageStatsRepository @Inject constructor(@ApplicationContext private val c
                 endOfDay
             )
             
-            val totalMillis = stats?.sumOf { it.totalTimeInForeground } ?: 0L
+            val totalMillis = stats
+                ?.filter { it.totalTimeInForeground > 0 }
+                ?.filter { it.packageName != context.packageName }
+                ?.filter { packageNames.isEmpty() || it.packageName in packageNames }
+                ?.sumOf { it.totalTimeInForeground }
+                ?: 0L
             result.add(DailyUsagePoint(startOfDay, totalMillis))
         }
         result.sortedBy { it.dayStartMillis }
@@ -134,6 +140,7 @@ class UsageStatsRepository @Inject constructor(@ApplicationContext private val c
         )
 
         if (stats.isNullOrEmpty()) return@withContext emptyList<AppUsageInfo>()
+        val launchCounts = getLaunchCounts(startTime, endTime)
 
         stats.filter { it.totalTimeInForeground > 0 }
             .map { usageStats ->
@@ -156,10 +163,29 @@ class UsageStatsRepository @Inject constructor(@ApplicationContext private val c
             .groupBy { it.packageName }
             .map { (pkg, list) ->
                 list.reduce { acc, info ->
-                    acc.copy(totalTimeInForegroundMillis = acc.totalTimeInForegroundMillis + info.totalTimeInForegroundMillis)
+                    acc.copy(
+                        totalTimeInForegroundMillis = acc.totalTimeInForegroundMillis + info.totalTimeInForegroundMillis,
+                        lastTimeUsed = maxOf(acc.lastTimeUsed, info.lastTimeUsed)
+                    )
                 }
+                    .copy(launchCount = launchCounts[pkg] ?: 0)
             }
             .sortedByDescending { it.totalTimeInForegroundMillis }
+    }
+
+    private fun getLaunchCounts(startTime: Long, endTime: Long): Map<String, Int> {
+        val counts = mutableMapOf<String, Int>()
+        val events = usageStatsManager.queryEvents(startTime, endTime)
+        val event = UsageEvents.Event()
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                counts[event.packageName] = (counts[event.packageName] ?: 0) + 1
+            }
+        }
+
+        return counts
     }
 
     suspend fun getTopUsedApps(limit: Int = 5): List<AppUsageInfo> {

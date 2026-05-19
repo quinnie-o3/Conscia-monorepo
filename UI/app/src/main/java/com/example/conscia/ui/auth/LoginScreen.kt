@@ -52,6 +52,7 @@ fun LoginScreen(
     }
 
     val authState by viewModel.authState.collectAsState()
+    val loginError = (authState as? AuthState.Error)?.message
 
     val googleSignInClient = remember(webClientId) {
         GoogleSignIn.getClient(
@@ -101,9 +102,24 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        if (loginError != null) {
+            Text(
+                text = loginError,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
+        }
+
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = {
+                email = it
+                if (authState is AuthState.Error) {
+                    viewModel.resetState()
+                }
+            },
             label = { Text("Email") },
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
             modifier = Modifier.fillMaxWidth(),
@@ -116,7 +132,12 @@ fun LoginScreen(
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = {
+                password = it
+                if (authState is AuthState.Error) {
+                    viewModel.resetState()
+                }
+            },
             label = { Text("Password") },
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
             trailingIcon = {
@@ -133,14 +154,6 @@ fun LoginScreen(
             singleLine = true,
             shape = RoundedCornerShape(16.dp)
         )
-
-        if (authState is AuthState.Error) {
-            Text(
-                text = (authState as AuthState.Error).message,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

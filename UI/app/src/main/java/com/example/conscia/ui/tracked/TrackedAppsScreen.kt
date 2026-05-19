@@ -25,8 +25,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -34,6 +35,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -64,11 +66,15 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.conscia.domain.model.TrackedAppLimitInfo
 import com.example.conscia.util.TimeFormatters
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrackedAppsRoute(
     onBackClick: () -> Unit,
+    onAddClick: () -> Unit,
     onAppClick: (Long) -> Unit,
     viewModel: TrackedAppsViewModel = hiltViewModel()
 ) {
@@ -84,6 +90,7 @@ fun TrackedAppsRoute(
     TrackedAppsContent(
         uiState = uiState,
         onBackClick = onBackClick,
+        onAddClick = onAddClick,
         onAppClick = onAppClick
     )
 }
@@ -92,6 +99,7 @@ fun TrackedAppsRoute(
 private fun TrackedAppsContent(
     uiState: TrackedAppsUiState,
     onBackClick: () -> Unit,
+    onAddClick: () -> Unit,
     onAppClick: (Long) -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -100,7 +108,7 @@ private fun TrackedAppsContent(
         containerColor = colorScheme.background,
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Tracked Apps", fontWeight = FontWeight.Bold) },
+                title = { Text("Rules", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -108,6 +116,18 @@ private fun TrackedAppsContent(
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = colorScheme.surface)
             )
+        },
+        floatingActionButton = {
+            if (!uiState.isLoading) {
+                ExtendedFloatingActionButton(
+                    onClick = onAddClick,
+                    icon = { Icon(Icons.Default.Add, null) },
+                    text = { Text("Add Rule") },
+                    containerColor = colorScheme.primary,
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
         }
     ) { padding ->
         when {
@@ -121,7 +141,7 @@ private fun TrackedAppsContent(
             }
 
             uiState.apps.isEmpty() -> {
-                EmptyTrackedApps(modifier = Modifier.padding(padding))
+                EmptyTrackedApps(onAddClick = onAddClick, modifier = Modifier.padding(padding))
             }
 
             else -> {
@@ -132,7 +152,7 @@ private fun TrackedAppsContent(
                 ) {
                     item {
                         Text(
-                            text = "Apps currently monitored by your rules.",
+                            text = "Rules with today's usage, limit progress, and visit count.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colorScheme.onSurfaceVariant
                         )
@@ -181,6 +201,11 @@ private fun TrackedAppRow(app: TrackedAppLimitInfo, onClick: () -> Unit) {
                     style = MaterialTheme.typography.labelSmall,
                     color = colorScheme.onSurfaceVariant
                 )
+                Text(
+                    text = "${(app.usagePercent * 100).toInt().coerceAtLeast(0)}% used | ${app.todayLaunchCount} visits today",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorScheme.onSurfaceVariant
+                )
             }
             Spacer(modifier = Modifier.width(8.dp))
             Icon(Icons.Default.ChevronRight, null, tint = colorScheme.onSurfaceVariant)
@@ -189,7 +214,7 @@ private fun TrackedAppRow(app: TrackedAppLimitInfo, onClick: () -> Unit) {
 }
 
 @Composable
-private fun EmptyTrackedApps(modifier: Modifier = Modifier) {
+private fun EmptyTrackedApps(onAddClick: () -> Unit, modifier: Modifier = Modifier) {
     val colorScheme = MaterialTheme.colorScheme
     Column(
         modifier = modifier.fillMaxSize().padding(32.dp),
@@ -200,12 +225,12 @@ private fun EmptyTrackedApps(modifier: Modifier = Modifier) {
             modifier = Modifier.size(96.dp).background(colorScheme.surfaceVariant, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.TrackChanges, null, modifier = Modifier.size(44.dp), tint = colorScheme.onSurfaceVariant)
+            Icon(Icons.Default.Add, null, modifier = Modifier.size(44.dp), tint = colorScheme.onSurfaceVariant)
         }
         Spacer(modifier = Modifier.height(20.dp))
-        Text("No tracked apps", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text("No rules yet", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text(
-            "Create a rule to start tracking an app.",
+            "Add a rule to start tracking an app.",
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyMedium,
             color = colorScheme.onSurfaceVariant,
@@ -219,6 +244,7 @@ private fun EmptyTrackedApps(modifier: Modifier = Modifier) {
 fun TrackedAppDetailRoute(
     ruleId: Long,
     onBackClick: () -> Unit,
+    onDeleted: () -> Unit,
     viewModel: TrackedAppDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -238,7 +264,8 @@ fun TrackedAppDetailRoute(
         onSaveLimit = viewModel::saveLimit,
         onSaveReason = viewModel::saveReason,
         onCancelLimit = viewModel::cancelLimitEdit,
-        onCancelReason = viewModel::cancelReasonEdit
+        onCancelReason = viewModel::cancelReasonEdit,
+        onDeleteClick = { viewModel.deleteRule(onDeleted) }
     )
 }
 
@@ -254,7 +281,8 @@ private fun TrackedAppDetailContent(
     onSaveLimit: () -> Unit,
     onSaveReason: () -> Unit,
     onCancelLimit: () -> Unit,
-    onCancelReason: () -> Unit
+    onCancelReason: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val rule = uiState.rule
@@ -263,10 +291,17 @@ private fun TrackedAppDetailContent(
         containerColor = colorScheme.background,
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(rule?.appName ?: "Tracked App", fontWeight = FontWeight.Bold) },
+                title = { Text(rule?.appName ?: "Rule", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (rule != null) {
+                        IconButton(onClick = onDeleteClick) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete rule", tint = Color(0xFFB91C1C))
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = colorScheme.surface)
@@ -288,7 +323,7 @@ private fun TrackedAppDetailContent(
                     modifier = Modifier.fillMaxSize().padding(padding).padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(uiState.errorMessage ?: "Tracked app not found.", textAlign = TextAlign.Center)
+                    Text(uiState.errorMessage ?: "Rule not found.", textAlign = TextAlign.Center)
                 }
             }
 
@@ -372,6 +407,12 @@ private fun AppUsageSummaryCard(uiState: TrackedAppDetailUiState) {
                 color = colorScheme.primary,
                 trackColor = colorScheme.surface.copy(alpha = 0.7f)
             )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "${(uiState.usagePercent * 100).toInt().coerceAtLeast(0)}% used | ${uiState.todayLaunchCount} visits today",
+                style = MaterialTheme.typography.labelMedium,
+                color = colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+            )
         }
     }
 }
@@ -438,9 +479,19 @@ private fun EditableReasonCard(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
+            val createdAt = uiState.rule?.createdAt ?: 0L
+            if (createdAt > 0L) {
+                Text(
+                    text = "Set up ${dateTimeFormatter.format(Date(createdAt))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
+
+private val dateTimeFormatter = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault())
 
 @Composable
 private fun EditableInfoCard(

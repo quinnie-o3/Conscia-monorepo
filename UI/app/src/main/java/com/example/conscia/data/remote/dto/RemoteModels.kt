@@ -29,7 +29,10 @@ data class TrackingRule(
     val intentionLabel: String?,
     val dailyLimitMinutes: Int,
     val trackingEnabled: Boolean,
-    val warningEnabled: Boolean
+    val warningEnabled: Boolean,
+    val extensionMinutes: Int? = 0,
+    val extensionCount: Int? = 0,
+    val lastExtensionDate: String? = ""
 )
 
 data class TrackingRuleRequest(

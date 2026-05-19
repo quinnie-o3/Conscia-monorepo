@@ -3,11 +3,26 @@ package com.example.conscia.presentation.warning
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,10 +41,13 @@ class UsageLimitWarningActivity : ComponentActivity() {
 
         setContent {
             ConsciaAppTheme {
-                // Nền hồng nhạt toàn màn hình để làm nổi bật thông báo
+                BackHandler {
+                    goHome()
+                    finish()
+                }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFFFFE4E6) // Nền hồng rất nhạt (Rose 100)
+                    color = Color(0xFFFFE4E6)
                 ) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -38,12 +56,7 @@ class UsageLimitWarningActivity : ComponentActivity() {
                         WarningCard(
                             appName = appName,
                             onOkClick = {
-                                // Quay về màn hình Home (Tương đương việc đóng app đang dùng)
-                                val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-                                    addCategory(Intent.CATEGORY_HOME)
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                }
-                                startActivity(homeIntent)
+                                goHome()
                                 finish()
                             }
                         )
@@ -51,6 +64,14 @@ class UsageLimitWarningActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun goHome() {
+        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        startActivity(homeIntent)
     }
 
     companion object {
@@ -64,12 +85,11 @@ class UsageLimitWarningActivity : ComponentActivity() {
 private fun WarningCard(appName: String, onOkClick: () -> Unit) {
     Card(
         modifier = Modifier
-            .fillMaxWidth(0.85f) // Căn đều các cạnh, chiếm 85% chiều ngang
+            .fillMaxWidth(0.85f)
             .wrapContentHeight(),
         shape = RoundedCornerShape(24.dp),
-        // Viền đỏ, nền hồng như yêu cầu
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF1F2)), 
-        border = BorderStroke(3.dp, Color(0xFFE11D48)) // Viền đỏ đậm (Rose 600)
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF1F2)),
+        border = BorderStroke(3.dp, Color(0xFFE11D48))
     ) {
         Column(
             modifier = Modifier.padding(32.dp),
@@ -80,29 +100,29 @@ private fun WarningCard(appName: String, onOkClick: () -> Unit) {
                 text = "Limit Reached!",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFFBE123C), // Chữ đỏ đậm
+                color = Color(0xFFBE123C),
                 textAlign = TextAlign.Center
             )
-            
+
             Spacer(modifier = Modifier.height(20.dp))
-            
+
             Text(
-                text = "You reached the limit for $appName today. If you want to extend more, please truy cập lại Conscia.",
+                text = "You reached the limit for $appName today. Open Conscia if you want to extend this rule.",
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
-                color = Color(0xFF881337), // Chữ hồng đậm
+                color = Color(0xFF881337),
                 textAlign = TextAlign.Center
             )
-            
+
             Spacer(modifier = Modifier.height(32.dp))
-            
+
             Button(
                 onClick = onOkClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE11D48)) // Nút đỏ
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE11D48))
             ) {
                 Text("OK", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
             }

@@ -7,6 +7,7 @@ data class AppUsageInfo(
     val appName: String,
     val totalTimeInForegroundMillis: Long,
     val lastTimeUsed: Long,
+    val launchCount: Int = 0,
     val icon: Drawable? = null
 )
 

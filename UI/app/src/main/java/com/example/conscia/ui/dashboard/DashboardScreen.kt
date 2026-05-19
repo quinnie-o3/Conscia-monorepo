@@ -47,7 +47,8 @@ import com.example.conscia.util.TimeFormatters
 @Composable
 fun DashboardRoute(
     viewModel: DashboardViewModel = hiltViewModel(),
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {},
+    onNewGoalClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -71,12 +72,12 @@ fun DashboardRoute(
         floatingActionButton = {
             if (uiState.hasUsagePermission) {
                 ExtendedFloatingActionButton(
-                    onClick = { /* New Goal Action */ },
+                    onClick = onNewGoalClick,
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
                     shape = RoundedCornerShape(16.dp),
                     icon = { Icon(Icons.Default.Add, "Add") },
-                    text = { Text("New Goal") }
+                    text = { Text("Add Rule") }
                 )
             }
         }
@@ -86,6 +87,7 @@ fun DashboardRoute(
             onGrantPermissionClick = { viewModel.onGrantUsageAccessClicked() },
             onExtendLimit = { ruleId -> viewModel.extendLimit(ruleId) },
             onProfileClick = onNavigateToSettings,
+            onNewGoalClick = onNewGoalClick,
             modifier = Modifier.padding(padding)
         )
     }
@@ -97,6 +99,7 @@ fun DashboardContent(
     onGrantPermissionClick: () -> Unit,
     onExtendLimit: (Long) -> Unit,
     onProfileClick: () -> Unit,
+    onNewGoalClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -128,6 +131,12 @@ fun DashboardContent(
                 )
             }
 
+            if (uiState.isEmpty) {
+                item {
+                    EmptyRulesHomeCard(onNewGoalClick = onNewGoalClick)
+                }
+            }
+
             if (uiState.trackedAppStatuses.isNotEmpty()) {
                 item { SectionHeader("Rules Today") }
                 items(uiState.trackedAppStatuses) { statusInfo ->
@@ -138,24 +147,81 @@ fun DashboardContent(
                 }
             }
             
-            if (uiState.todayTopApps.isNotEmpty()) {
+            if (uiState.hasTrackedRules) {
                 item { SectionHeader("Today's App Usage") }
-                items(uiState.todayTopApps) { usage ->
-                    UsageItem(usage)
+                if (uiState.todayTopApps.isEmpty()) {
+                    item {
+                        EmptyMetricCard("No usage recorded today for apps in your rules.")
+                    }
+                } else {
+                    items(uiState.todayTopApps) { usage ->
+                        UsageItem(usage)
+                    }
                 }
             }
 
-            item {
-                SectionHeader("Weekly Summary")
-                WeeklyPreviewCard(
-                    totalMillis = uiState.weeklyTotalUsageMillis,
-                    label = uiState.weeklySummaryLabel,
-                    isLockedSnapshot = uiState.hasLockedWeeklySummary
-                )
+            if (uiState.hasTrackedRules) {
+                item {
+                    SectionHeader("Weekly Summary")
+                    WeeklyPreviewCard(
+                        totalMillis = uiState.weeklyTotalUsageMillis,
+                        label = uiState.weeklySummaryLabel,
+                        isLockedSnapshot = uiState.hasLockedWeeklySummary
+                    )
+                }
             }
 
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
+    }
+}
+
+@Composable
+fun EmptyRulesHomeCard(onNewGoalClick: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "No rules yet",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Create a rule before Home starts showing app usage, limits, and weekly totals.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Button(
+                onClick = onNewGoalClick,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Add Rule")
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyMetricCard(message: String) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -388,7 +454,7 @@ fun UsageDonutOverviewCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Total screen time",
+                    text = "Today's rule screen time",
                     style = MaterialTheme.typography.bodyLarge,
                     color = colorScheme.onSurface
                 )
@@ -399,15 +465,17 @@ fun UsageDonutOverviewCard(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Tracked: ${TimeFormatters.formatDurationShort(trackedMillis)}",
+                    text = "Rules: ${TimeFormatters.formatDurationShort(trackedMillis)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = colorScheme.onSurface
                 )
-                Text(
-                    text = "Other apps: ${TimeFormatters.formatDurationShort(otherMillis)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colorScheme.onSurfaceVariant
-                )
+                if (otherMillis > 0L) {
+                    Text(
+                        text = "Other apps: ${TimeFormatters.formatDurationShort(otherMillis)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
 
                 if (warningSummary.isNotBlank()) {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -428,7 +496,7 @@ fun UsageDonutOverviewCard(
                 } else {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "All tracked apps are within limits",
+                        text = "All rules are within limits",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.secondary
                     )
@@ -474,7 +542,7 @@ private fun UsageDonutChart(percent: Int, modifier: Modifier = Modifier) {
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Tracked",
+                text = "Rules",
                 style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.onSurfaceVariant
             )

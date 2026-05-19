@@ -6,6 +6,7 @@ data class TrackedAppLimitInfo(
     val appName: String,
     val intentionLabel: String,
     val todayUsageMillis: Long,
+    val todayLaunchCount: Int,
     val dailyLimitMinutes: Int,
     val dailyLimitMillis: Long,
     val remainingMillis: Long,

@@ -22,25 +22,22 @@ class RuleRepository @Inject constructor(
         ruleDao.getRuleByPackageName(packageName)
 
     suspend fun insertRule(rule: RuleEntity) {
-        ruleDao.insertRule(rule)
         syncRuleToRemote(rule)
+        ruleDao.insertRule(rule)
     }
 
     suspend fun updateRule(rule: RuleEntity) {
-        ruleDao.updateRule(rule)
+        val previousRule = ruleDao.getRuleById(rule.id)
         syncRuleToRemote(rule)
+        if (previousRule != null && previousRule.packageName != rule.packageName) {
+            deleteRemoteRule(previousRule.packageName)
+        }
+        ruleDao.updateRule(rule)
     }
 
     suspend fun deleteRule(rule: RuleEntity) {
+        deleteRemoteRule(rule.packageName)
         ruleDao.deleteRule(rule)
-        val deviceId = dataStore.deviceIdFlow.firstOrNull()
-        if (deviceId != null) {
-            try {
-                apiService.deleteTrackingRule(deviceId, rule.packageName)
-            } catch (e: Exception) {
-                // Background sync will handle cleanup later if needed
-            }
-        }
     }
 
     suspend fun deleteAllLocalRules() {
@@ -48,24 +45,39 @@ class RuleRepository @Inject constructor(
     }
 
     private suspend fun syncRuleToRemote(rule: RuleEntity) {
-        val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: return
-        val accessToken = dataStore.accessTokenFlow.firstOrNull()
-        
-        if (accessToken != null) {
-            try {
-                val request = TrackingRuleRequest(
-                    deviceId = deviceId,
-                    packageName = rule.packageName,
-                    appName = rule.appName,
-                    intentionLabel = rule.intentionLabel,
-                    dailyLimitMinutes = rule.dailyLimitMinutes,
-                    trackingEnabled = rule.trackingEnabled,
-                    warningEnabled = rule.warningEnabled
-                )
-                apiService.upsertTrackingRule(request)
-            } catch (e: Exception) {
-                // Logic retry handles this
-            }
+        val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: dataStore.generateAndSaveDeviceId()
+        if (dataStore.accessTokenFlow.firstOrNull() == null) {
+            throw IllegalStateException("Please sign in before saving rules.")
+        }
+
+        val request = TrackingRuleRequest(
+            deviceId = deviceId,
+            packageName = rule.packageName,
+            appName = rule.appName,
+            intentionLabel = rule.intentionLabel,
+            dailyLimitMinutes = rule.dailyLimitMinutes,
+            trackingEnabled = rule.trackingEnabled,
+            warningEnabled = rule.warningEnabled,
+            extensionMinutes = rule.extensionMinutes,
+            extensionCount = rule.extensionCount,
+            lastExtensionDate = rule.lastExtensionDate.ifBlank { null }
+        )
+        val response = apiService.upsertTrackingRule(request)
+        val body = response.body()
+        if (!response.isSuccessful || body?.success != true) {
+            throw IllegalStateException(body?.message ?: "Failed to sync rule with backend.")
+        }
+    }
+
+    private suspend fun deleteRemoteRule(packageName: String) {
+        val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: dataStore.generateAndSaveDeviceId()
+        if (dataStore.accessTokenFlow.firstOrNull() == null) {
+            throw IllegalStateException("Please sign in before deleting rules.")
+        }
+        val response = apiService.deleteTrackingRule(deviceId, packageName)
+        val body = response.body()
+        if (!response.isSuccessful || body?.success != true) {
+            throw IllegalStateException(body?.message ?: "Failed to delete rule from backend.")
         }
     }
 
@@ -77,6 +89,7 @@ class RuleRepository @Inject constructor(
             val response = apiService.getTrackingRules(deviceId)
             if (response.isSuccessful) {
                 val remoteRules = response.body()?.data ?: emptyList()
+                ruleDao.deleteAllRules()
                 remoteRules.forEach { remote ->
                     val localRule = RuleEntity(
                         packageName = remote.packageName,
@@ -85,15 +98,12 @@ class RuleRepository @Inject constructor(
                         dailyLimitMinutes = remote.dailyLimitMinutes,
                         trackingEnabled = remote.trackingEnabled,
                         warningEnabled = remote.warningEnabled,
+                        extensionMinutes = remote.extensionMinutes ?: 0,
+                        extensionCount = remote.extensionCount ?: 0,
+                        lastExtensionDate = remote.lastExtensionDate.orEmpty(),
                         updatedAt = System.currentTimeMillis()
                     )
-                    
-                    val existing = ruleDao.getRuleByPackageName(remote.packageName)
-                    if (existing == null) {
-                        ruleDao.insertRule(localRule)
-                    } else {
-                        ruleDao.updateRule(localRule.copy(id = existing.id))
-                    }
+                    ruleDao.insertRule(localRule)
                 }
             }
         } catch (e: Exception) {

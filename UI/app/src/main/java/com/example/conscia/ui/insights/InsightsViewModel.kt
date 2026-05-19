@@ -34,8 +34,16 @@ data class InsightsUiState(
     val averageDailyUsageMillis: Long = 0L,
     val purposefulPercent: Int = 0,
     val trackedAppsCount: Int = 0,
+    val appUsageRankings: List<AppUsageRanking> = emptyList(),
     val reflectionText: String = "",
     val lastUpdatedLabel: String = ""
+)
+
+data class AppUsageRanking(
+    val packageName: String,
+    val appName: String,
+    val usageMillis: Long,
+    val limitMinutes: Int? = null
 )
 
 @HiltViewModel
@@ -112,6 +120,7 @@ class InsightsViewModel @Inject constructor(
                 val purposefulUsageMillis = remoteInsights.summary.trackedSeconds * 1000L
                 val otherUsageMillis = remoteInsights.summary.otherSeconds * 1000L
                 val averageDailyUsageMillis = remoteInsights.summary.averageDailySeconds * 1000L
+                val usageRankings = buildAppUsageRankings(range)
 
                 _uiState.update {
                     it.copy(
@@ -125,6 +134,7 @@ class InsightsViewModel @Inject constructor(
                         averageDailyUsageMillis = averageDailyUsageMillis,
                         purposefulPercent = remoteInsights.summary.purposefulPercentage.roundToInt(),
                         trackedAppsCount = remoteInsights.summary.trackedAppsCount,
+                        appUsageRankings = usageRankings,
                         reflectionText = buildReflection(
                             totalUsageMillis = totalUsageMillis,
                             purposefulUsageMillis = purposefulUsageMillis,
@@ -174,6 +184,7 @@ class InsightsViewModel @Inject constructor(
         val topTrackedApp = usage
             .filter { it.packageName in trackedPackages }
             .maxByOrNull { it.totalTimeInForegroundMillis }
+        val rulesByPackage = trackedRules.associateBy { it.packageName }
 
         _uiState.update {
             it.copy(
@@ -187,6 +198,17 @@ class InsightsViewModel @Inject constructor(
                 averageDailyUsageMillis = averageDailyUsage,
                 purposefulPercent = purposefulPercent,
                 trackedAppsCount = trackedPackages.size,
+                appUsageRankings = usage
+                    .sortedByDescending { it.totalTimeInForegroundMillis }
+                    .take(8)
+                    .map { app ->
+                        AppUsageRanking(
+                            packageName = app.packageName,
+                            appName = app.appName,
+                            usageMillis = app.totalTimeInForegroundMillis,
+                            limitMinutes = rulesByPackage[app.packageName]?.dailyLimitMinutes
+                        )
+                    },
                 reflectionText = buildReflection(
                     totalUsageMillis = totalUsageMillis,
                     purposefulUsageMillis = purposefulUsage,
@@ -199,6 +221,24 @@ class InsightsViewModel @Inject constructor(
         }
     }
 
+    private suspend fun buildAppUsageRankings(range: SevenDayRange): List<AppUsageRanking> {
+        val rulesByPackage = ruleRepository.allRules.first()
+            .filter { it.trackingEnabled }
+            .associateBy { it.packageName }
+
+        return usageRepository.getUsageBetween(range.startMillis, range.endMillis)
+            .sortedByDescending { it.totalTimeInForegroundMillis }
+            .take(8)
+            .map { app ->
+                AppUsageRanking(
+                    packageName = app.packageName,
+                    appName = app.appName,
+                    usageMillis = app.totalTimeInForegroundMillis,
+                    limitMinutes = rulesByPackage[app.packageName]?.dailyLimitMinutes
+                )
+            }
+    }
+
     private fun buildReflection(
         totalUsageMillis: Long,
         purposefulUsageMillis: Long,
@@ -208,14 +248,14 @@ class InsightsViewModel @Inject constructor(
     ): String {
         return when {
             totalUsageMillis == 0L -> "No app activity was detected in this 7-day range yet."
-            trackedAppsCount == 0 -> "You spent ${TimeFormatters.formatDurationShort(totalUsageMillis)} in total, but no tracked apps are configured yet."
-            purposefulUsageMillis == 0L -> "You spent ${TimeFormatters.formatDurationShort(totalUsageMillis)} in total, but none of it matched your tracked apps."
+            trackedAppsCount == 0 -> "You spent ${TimeFormatters.formatDurationShort(totalUsageMillis)} in total, but no rules are configured yet."
+            purposefulUsageMillis == 0L -> "You spent ${TimeFormatters.formatDurationShort(totalUsageMillis)} in total, but none of it matched your rules."
             !topTrackedAppName.isNullOrBlank() && topTrackedAppUsageMillis != null -> {
-                "${TimeFormatters.formatDurationShort(purposefulUsageMillis)} of ${TimeFormatters.formatDurationShort(totalUsageMillis)} was on tracked apps. " +
+                "${TimeFormatters.formatDurationShort(purposefulUsageMillis)} of ${TimeFormatters.formatDurationShort(totalUsageMillis)} matched your rules. " +
                     "$topTrackedAppName led with ${TimeFormatters.formatDurationShort(topTrackedAppUsageMillis)}."
             }
 
-            else -> "${TimeFormatters.formatDurationShort(purposefulUsageMillis)} of ${TimeFormatters.formatDurationShort(totalUsageMillis)} was on tracked apps in this range."
+            else -> "${TimeFormatters.formatDurationShort(purposefulUsageMillis)} of ${TimeFormatters.formatDurationShort(totalUsageMillis)} matched your rules in this range."
         }
     }
 

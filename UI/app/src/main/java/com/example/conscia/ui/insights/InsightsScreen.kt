@@ -2,6 +2,7 @@ package com.example.conscia.ui.insights
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,18 +43,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.conscia.ui.dashboard.PermissionRequiredView
 import com.example.conscia.ui.theme.tintedSurface
 import com.example.conscia.util.TimeFormatters
 import kotlinx.coroutines.delay
 
 @Composable
-fun InsightsRoute(viewModel: InsightsViewModel = viewModel()) {
+fun InsightsRoute(viewModel: InsightsViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
 
@@ -130,7 +134,7 @@ private fun InsightsContent(
                                     text = if (uiState.lastUpdatedLabel.isBlank()) {
                                         "Refreshes every 15s while this screen is open"
                                     } else {
-                                        "Last updated ${uiState.lastUpdatedLabel} • refreshes every 15s"
+                                        "Last updated ${uiState.lastUpdatedLabel} | refreshes every 15s"
                                     },
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = colorScheme.onSurfaceVariant
@@ -224,7 +228,7 @@ private fun InsightsContent(
                                 verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 InsightMetric(
-                                    label = "Tracked usage",
+                                    label = "Rules usage",
                                     value = TimeFormatters.formatDurationShort(uiState.purposefulUsageMillis),
                                     valueColor = colorScheme.primary
                                 )
@@ -262,6 +266,10 @@ private fun InsightsContent(
                     }
 
                     item {
+                        AppUsageBarChart(rankings = uiState.appUsageRankings)
+                    }
+
+                    item {
                         Card(
                             shape = RoundedCornerShape(24.dp),
                             colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
@@ -296,6 +304,107 @@ private fun InsightsContent(
                     }
 
                     item { Spacer(modifier = Modifier.height(32.dp)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppUsageBarChart(rankings: List<AppUsageRanking>) {
+    val colorScheme = MaterialTheme.colorScheme
+    val maxUsageMillis = rankings.maxOfOrNull { it.usageMillis } ?: 0L
+
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = "App Usage Ranking",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Sorted by time used, highest to lowest.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+
+            if (rankings.isEmpty() || maxUsageMillis == 0L) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(180.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No app usage detected for this range.",
+                        color = colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                return@Column
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .height(260.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                rankings.forEach { app ->
+                    val ratio = app.usageMillis.toFloat() / maxUsageMillis.toFloat()
+                    val barHeight = (150.dp.value * ratio.coerceIn(0.04f, 1f)).dp
+
+                    Column(
+                        modifier = Modifier.width(64.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom
+                    ) {
+                        Text(
+                            text = TimeFormatters.formatDurationShort(app.usageMillis),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(barHeight)
+                                .background(
+                                    colorScheme.primary,
+                                    RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
+                                )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = app.appName,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurface,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.height(32.dp)
+                        )
+                        if (app.limitMinutes != null) {
+                            Text(
+                                text = "Limit ${TimeFormatters.formatDurationDailyLimit(app.limitMinutes)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
                 }
             }
         }
@@ -361,7 +470,7 @@ private fun InsightsDonutChart(purposefulPercent: Int, trackedAppsCount: Int) {
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = if (trackedAppsCount == 0) "Untracked" else "Tracked",
+                text = if (trackedAppsCount == 0) "No rules" else "Rules",
                 fontSize = 12.sp,
                 color = colorScheme.onSurfaceVariant
             )

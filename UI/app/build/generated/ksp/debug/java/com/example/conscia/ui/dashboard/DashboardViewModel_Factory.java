@@ -4,7 +4,6 @@ import android.app.Application;
 import com.example.conscia.data.TrackedAppsDataStore;
 import com.example.conscia.data.remote.api.ConsciaApiService;
 import com.example.conscia.data.rule.RuleRepository;
-import com.example.conscia.data.weekly.WeeklySummaryManager;
 import com.example.conscia.domain.usecase.EvaluateTrackedAppsUsageUseCase;
 import com.example.conscia.domain.usecase.GetRulesUseCase;
 import com.example.conscia.domain.usecase.GetTodayUsageUseCase;
@@ -39,8 +38,6 @@ public final class DashboardViewModel_Factory implements Factory<DashboardViewMo
 
   private final Provider<GetRulesUseCase> getRulesUseCaseProvider;
 
-  private final Provider<WeeklySummaryManager> weeklySummaryManagerProvider;
-
   private final Provider<EvaluateTrackedAppsUsageUseCase> evaluateUseCaseProvider;
 
   private final Provider<RuleRepository> ruleRepositoryProvider;
@@ -53,7 +50,6 @@ public final class DashboardViewModel_Factory implements Factory<DashboardViewMo
       Provider<GetTodayUsageUseCase> getTodayUsageUseCaseProvider,
       Provider<GetWeeklyUsageUseCase> getWeeklyUsageUseCaseProvider,
       Provider<GetRulesUseCase> getRulesUseCaseProvider,
-      Provider<WeeklySummaryManager> weeklySummaryManagerProvider,
       Provider<EvaluateTrackedAppsUsageUseCase> evaluateUseCaseProvider,
       Provider<RuleRepository> ruleRepositoryProvider,
       Provider<ConsciaApiService> apiServiceProvider,
@@ -62,7 +58,6 @@ public final class DashboardViewModel_Factory implements Factory<DashboardViewMo
     this.getTodayUsageUseCaseProvider = getTodayUsageUseCaseProvider;
     this.getWeeklyUsageUseCaseProvider = getWeeklyUsageUseCaseProvider;
     this.getRulesUseCaseProvider = getRulesUseCaseProvider;
-    this.weeklySummaryManagerProvider = weeklySummaryManagerProvider;
     this.evaluateUseCaseProvider = evaluateUseCaseProvider;
     this.ruleRepositoryProvider = ruleRepositoryProvider;
     this.apiServiceProvider = apiServiceProvider;
@@ -71,26 +66,24 @@ public final class DashboardViewModel_Factory implements Factory<DashboardViewMo
 
   @Override
   public DashboardViewModel get() {
-    return newInstance(applicationProvider.get(), getTodayUsageUseCaseProvider.get(), getWeeklyUsageUseCaseProvider.get(), getRulesUseCaseProvider.get(), weeklySummaryManagerProvider.get(), evaluateUseCaseProvider.get(), ruleRepositoryProvider.get(), apiServiceProvider.get(), dataStoreProvider.get());
+    return newInstance(applicationProvider.get(), getTodayUsageUseCaseProvider.get(), getWeeklyUsageUseCaseProvider.get(), getRulesUseCaseProvider.get(), evaluateUseCaseProvider.get(), ruleRepositoryProvider.get(), apiServiceProvider.get(), dataStoreProvider.get());
   }
 
   public static DashboardViewModel_Factory create(Provider<Application> applicationProvider,
       Provider<GetTodayUsageUseCase> getTodayUsageUseCaseProvider,
       Provider<GetWeeklyUsageUseCase> getWeeklyUsageUseCaseProvider,
       Provider<GetRulesUseCase> getRulesUseCaseProvider,
-      Provider<WeeklySummaryManager> weeklySummaryManagerProvider,
       Provider<EvaluateTrackedAppsUsageUseCase> evaluateUseCaseProvider,
       Provider<RuleRepository> ruleRepositoryProvider,
       Provider<ConsciaApiService> apiServiceProvider,
       Provider<TrackedAppsDataStore> dataStoreProvider) {
-    return new DashboardViewModel_Factory(applicationProvider, getTodayUsageUseCaseProvider, getWeeklyUsageUseCaseProvider, getRulesUseCaseProvider, weeklySummaryManagerProvider, evaluateUseCaseProvider, ruleRepositoryProvider, apiServiceProvider, dataStoreProvider);
+    return new DashboardViewModel_Factory(applicationProvider, getTodayUsageUseCaseProvider, getWeeklyUsageUseCaseProvider, getRulesUseCaseProvider, evaluateUseCaseProvider, ruleRepositoryProvider, apiServiceProvider, dataStoreProvider);
   }
 
   public static DashboardViewModel newInstance(Application application,
       GetTodayUsageUseCase getTodayUsageUseCase, GetWeeklyUsageUseCase getWeeklyUsageUseCase,
-      GetRulesUseCase getRulesUseCase, WeeklySummaryManager weeklySummaryManager,
-      EvaluateTrackedAppsUsageUseCase evaluateUseCase, RuleRepository ruleRepository,
-      ConsciaApiService apiService, TrackedAppsDataStore dataStore) {
-    return new DashboardViewModel(application, getTodayUsageUseCase, getWeeklyUsageUseCase, getRulesUseCase, weeklySummaryManager, evaluateUseCase, ruleRepository, apiService, dataStore);
+      GetRulesUseCase getRulesUseCase, EvaluateTrackedAppsUsageUseCase evaluateUseCase,
+      RuleRepository ruleRepository, ConsciaApiService apiService, TrackedAppsDataStore dataStore) {
+    return new DashboardViewModel(application, getTodayUsageUseCase, getWeeklyUsageUseCase, getRulesUseCase, evaluateUseCase, ruleRepository, apiService, dataStore);
   }
 }

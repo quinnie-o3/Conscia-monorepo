@@ -47,6 +47,7 @@ class AuthViewModel @Inject constructor(
                 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val authData = response.body()?.data!!
+                    ruleRepository.deleteAllLocalRules()
                     // Save full user info to fix "Guest" and missing avatar issues
                     dataStore.saveAuthToken(
                         authData.accessToken,
@@ -67,7 +68,7 @@ class AuthViewModel @Inject constructor(
                 } else {
                     val errorMsg = parseErrorMessage(response)
                     _authState.value = AuthState.Error(
-                        if (response.code() == 401) "Incorrect email or password. Please try again."
+                        if (response.code() == 401) "Email hoặc mật khẩu không đúng."
                         else errorMsg
                     )
                 }
@@ -89,6 +90,7 @@ class AuthViewModel @Inject constructor(
                 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val authData = response.body()?.data!!
+                    ruleRepository.deleteAllLocalRules()
                     // Save full user info
                     dataStore.saveAuthToken(
                         authData.accessToken,
@@ -125,6 +127,7 @@ class AuthViewModel @Inject constructor(
                 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val authData = response.body()?.data!!
+                    ruleRepository.deleteAllLocalRules()
                     // Save full user info (Fixes Google User appearing as Guest)
                     dataStore.saveAuthToken(
                         authData.accessToken,
@@ -155,8 +158,12 @@ class AuthViewModel @Inject constructor(
     private fun parseErrorMessage(response: retrofit2.Response<*>): String {
         return try {
             val errorBody = response.errorBody()?.string()
+            if (errorBody.isNullOrBlank()) {
+                return "An error occurred (Code: ${response.code()})"
+            }
+
             val apiResponse = Gson().fromJson(errorBody, ApiResponse::class.java)
-            apiResponse.message ?: "An unknown error occurred"
+            apiResponse.message ?: "An error occurred (Code: ${response.code()})"
         } catch (e: Exception) {
             "An error occurred (Code: ${response.code()})"
         }

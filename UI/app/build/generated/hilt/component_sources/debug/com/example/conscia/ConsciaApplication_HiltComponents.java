@@ -5,7 +5,6 @@ import com.example.conscia.di.DataStoreModule;
 import com.example.conscia.di.DatabaseModule;
 import com.example.conscia.di.NetworkModule;
 import com.example.conscia.monitoring.AccessibilityForegroundAppService_GeneratedInjector;
-import com.example.conscia.presentation.intervention.IntentionPromptActivity_GeneratedInjector;
 import com.example.conscia.ui.auth.AuthViewModel_HiltModules;
 import com.example.conscia.ui.dashboard.DashboardViewModel_HiltModules;
 import com.example.conscia.ui.insights.InsightsViewModel_HiltModules;
@@ -13,7 +12,6 @@ import com.example.conscia.ui.intention.SessionHistoryViewModel_HiltModules;
 import com.example.conscia.ui.onboarding.ChooseAppsViewModel_HiltModules;
 import com.example.conscia.ui.onboarding.StarterRulesViewModel_HiltModules;
 import com.example.conscia.ui.rules.CreateEditRuleViewModel_HiltModules;
-import com.example.conscia.ui.rules.RulesViewModel_HiltModules;
 import com.example.conscia.ui.settings.ManageIntentionsViewModel_HiltModules;
 import com.example.conscia.ui.settings.ProfileViewModel_HiltModules;
 import com.example.conscia.ui.tracked.TrackedAppDetailViewModel_HiltModules;
@@ -186,7 +184,6 @@ public final class ConsciaApplication_HiltComponents {
           InsightsViewModel_HiltModules.KeyModule.class,
           ManageIntentionsViewModel_HiltModules.KeyModule.class,
           ProfileViewModel_HiltModules.KeyModule.class,
-          RulesViewModel_HiltModules.KeyModule.class,
           SessionHistoryViewModel_HiltModules.KeyModule.class,
           StarterRulesViewModel_HiltModules.KeyModule.class,
           TrackedAppDetailViewModel_HiltModules.KeyModule.class,
@@ -213,7 +210,6 @@ public final class ConsciaApplication_HiltComponents {
   )
   @ActivityScoped
   public abstract static class ActivityC implements MainActivity_GeneratedInjector,
-      IntentionPromptActivity_GeneratedInjector,
       ActivityComponent,
       DefaultViewModelFactories.ActivityEntryPoint,
       HiltWrapper_HiltViewModelFactory_ActivityCreatorEntryPoint,
@@ -235,7 +231,6 @@ public final class ConsciaApplication_HiltComponents {
           InsightsViewModel_HiltModules.BindsModule.class,
           ManageIntentionsViewModel_HiltModules.BindsModule.class,
           ProfileViewModel_HiltModules.BindsModule.class,
-          RulesViewModel_HiltModules.BindsModule.class,
           SessionHistoryViewModel_HiltModules.BindsModule.class,
           StarterRulesViewModel_HiltModules.BindsModule.class,
           TrackedAppDetailViewModel_HiltModules.BindsModule.class,

@@ -128,21 +128,30 @@ class StarterRulesViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
 
-            drafts.forEach { draft ->
-                ruleRepository.upsertRuleByPackage(
-                    RuleEntity(
-                        packageName = draft.packageName,
-                        appName = draft.appName,
-                        intentionLabel = draft.intentionLabel,
-                        dailyLimitMinutes = 60, // Tăng lên 60 phút để tránh báo "vượt hạn mức" ngay lập tức
-                        trackingEnabled = true,
-                        warningEnabled = true
+            try {
+                drafts.forEach { draft ->
+                    ruleRepository.upsertRuleByPackage(
+                        RuleEntity(
+                            packageName = draft.packageName,
+                            appName = draft.appName,
+                            intentionLabel = draft.intentionLabel,
+                            dailyLimitMinutes = 60,
+                            trackingEnabled = true,
+                            warningEnabled = true
+                        )
                     )
-                )
-            }
+                }
 
-            _uiState.update { it.copy(isSaving = false) }
-            onComplete()
+                _uiState.update { it.copy(isSaving = false) }
+                onComplete()
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSaving = false,
+                        errorMessage = e.message ?: "Failed to save starter rules."
+                    )
+                }
+            }
         }
     }
 }

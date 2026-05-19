@@ -7,5 +7,6 @@ import javax.inject.Inject
 class GetWeeklyUsageUseCase @Inject constructor(
     private val repository: UsageStatsRepository
 ) {
-    suspend operator fun invoke(): List<DailyUsagePoint> = repository.getWeeklyUsageBreakdown()
+    suspend operator fun invoke(packageNames: Set<String> = emptySet()): List<DailyUsagePoint> =
+        repository.getWeeklyUsageBreakdown(packageNames)
 }

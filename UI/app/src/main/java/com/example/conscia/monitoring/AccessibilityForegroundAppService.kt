@@ -2,16 +2,23 @@ package com.example.conscia.monitoring
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import com.example.conscia.data.rule.RuleRepository
 import com.example.conscia.data.usage.UsageStatsRepository
+import com.example.conscia.data.warning.WarningHistoryStore
+import com.example.conscia.notification.ConsciaNotificationManager
 import com.example.conscia.presentation.intervention.IntentionPromptActivity
 import com.example.conscia.presentation.warning.UsageLimitWarningActivity
+import com.example.conscia.util.TimeFormatters
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -30,8 +37,18 @@ class AccessibilityForegroundAppService : AccessibilityService() {
     @Inject
     lateinit var usageRepository: UsageStatsRepository
 
+    @Inject
+    lateinit var notificationManager: ConsciaNotificationManager
+
+    @Inject
+    lateinit var warningHistoryStore: WarningHistoryStore
+
     private val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     private var promptPackageName: String? = null
+    private var foregroundPackageName: String? = null
+    private var foregroundSessionStartedAt: Long = 0L
+    private var foregroundSessionStartUsageMillis: Long = 0L
+    private var limitMonitorJob: Job? = null
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
@@ -42,6 +59,7 @@ class AccessibilityForegroundAppService : AccessibilityService() {
             if (promptPackageName == null) {
                 PurposeGateStore.clear(this)
             }
+            stopForegroundSession()
             return
         }
 
@@ -56,10 +74,13 @@ class AccessibilityForegroundAppService : AccessibilityService() {
             val activeRule = rules.find { it.packageName == packageName && it.trackingEnabled }
                 ?: run {
                     promptPackageName = null
+                    withContext(Dispatchers.Main) {
+                        stopForegroundSession()
+                    }
                     return@launch
                 }
 
-            val currentUsageMillis = usageRepository
+            val usageStatsMillis = usageRepository
                 .getTodayUsage()
                 .find { it.packageName == packageName }
                 ?.totalTimeInForegroundMillis
@@ -71,9 +92,16 @@ class AccessibilityForegroundAppService : AccessibilityService() {
             val effectiveLimitMillis = effectiveLimitMinutes.toLong() * 60 * 1000
 
             withContext(Dispatchers.Main) {
+                startOrUpdateForegroundSession(packageName, usageStatsMillis)
+                val currentUsageMillis = currentRealtimeUsageMillis(packageName, usageStatsMillis)
                 if (currentUsageMillis >= effectiveLimitMillis && activeRule.warningEnabled) {
                     promptPackageName = null
-                    launchUsageLimitWarning(activeRule.appName)
+                    handleLimitReached(
+                        packageName = activeRule.packageName,
+                        appName = activeRule.appName,
+                        usageMillis = currentUsageMillis,
+                        limitMillis = effectiveLimitMillis
+                    )
                 } else if (
                     !PurposeGateStore.isAllowedForCurrentSession(this@AccessibilityForegroundAppService, packageName) &&
                     promptPackageName != packageName
@@ -83,10 +111,20 @@ class AccessibilityForegroundAppService : AccessibilityService() {
                         packageName = activeRule.packageName,
                         appName = activeRule.appName,
                         ruleId = activeRule.id,
-                        intentionLabel = activeRule.intentionLabel
+                        intentionLabel = activeRule.intentionLabel,
+                        otherIntentionLabels = rules
+                            .map { it.intentionLabel }
+                            .filter { it.isNotBlank() && it != activeRule.intentionLabel }
+                            .distinct()
+                            .take(3)
                     )
                 } else if (PurposeGateStore.isAllowedForCurrentSession(this@AccessibilityForegroundAppService, packageName)) {
                     promptPackageName = null
+                    startLimitMonitor(
+                        packageName = activeRule.packageName,
+                        appName = activeRule.appName,
+                        effectiveLimitMillis = effectiveLimitMillis
+                    )
                 }
             }
         }
@@ -96,7 +134,8 @@ class AccessibilityForegroundAppService : AccessibilityService() {
         packageName: String,
         appName: String,
         ruleId: Long,
-        intentionLabel: String
+        intentionLabel: String,
+        otherIntentionLabels: List<String>
     ) {
         val intent = Intent(this, IntentionPromptActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -104,8 +143,87 @@ class AccessibilityForegroundAppService : AccessibilityService() {
             putExtra(IntentionPromptActivity.EXTRA_APP_NAME, appName)
             putExtra(IntentionPromptActivity.EXTRA_RULE_ID, ruleId)
             putExtra(IntentionPromptActivity.EXTRA_INTENTION_LABEL, intentionLabel)
+            putStringArrayListExtra(
+                IntentionPromptActivity.EXTRA_OTHER_INTENTION_LABELS,
+                ArrayList(otherIntentionLabels)
+            )
         }
         startActivity(intent)
+    }
+
+    private fun startOrUpdateForegroundSession(packageName: String, usageStatsMillis: Long) {
+        if (foregroundPackageName != packageName) {
+            foregroundPackageName = packageName
+            foregroundSessionStartedAt = SystemClock.elapsedRealtime()
+            foregroundSessionStartUsageMillis = usageStatsMillis
+            limitMonitorJob?.cancel()
+            limitMonitorJob = null
+        } else if (usageStatsMillis > foregroundSessionStartUsageMillis) {
+            val elapsedMillis = SystemClock.elapsedRealtime() - foregroundSessionStartedAt
+            foregroundSessionStartUsageMillis = usageStatsMillis - elapsedMillis.coerceAtLeast(0L)
+        }
+    }
+
+    private fun currentRealtimeUsageMillis(packageName: String, usageStatsMillis: Long): Long {
+        if (foregroundPackageName != packageName) return usageStatsMillis
+        val elapsedMillis = SystemClock.elapsedRealtime() - foregroundSessionStartedAt
+        return maxOf(usageStatsMillis, foregroundSessionStartUsageMillis + elapsedMillis.coerceAtLeast(0L))
+    }
+
+    private fun stopForegroundSession() {
+        foregroundPackageName = null
+        foregroundSessionStartedAt = 0L
+        foregroundSessionStartUsageMillis = 0L
+        limitMonitorJob?.cancel()
+        limitMonitorJob = null
+    }
+
+    private fun startLimitMonitor(packageName: String, appName: String, effectiveLimitMillis: Long) {
+        if (limitMonitorJob?.isActive == true) return
+        limitMonitorJob = serviceScope.launch {
+            while (isActive && foregroundPackageName == packageName) {
+                delay(1_000L)
+                val usageStatsMillis = usageRepository
+                    .getTodayUsage()
+                    .find { it.packageName == packageName }
+                    ?.totalTimeInForegroundMillis
+                    ?: 0L
+                val currentUsageMillis = currentRealtimeUsageMillis(packageName, usageStatsMillis)
+                if (currentUsageMillis >= effectiveLimitMillis) {
+                    withContext(Dispatchers.Main) {
+                        handleLimitReached(
+                            packageName = packageName,
+                            appName = appName,
+                            usageMillis = currentUsageMillis,
+                            limitMillis = effectiveLimitMillis
+                        )
+                    }
+                    break
+                }
+            }
+        }
+    }
+
+    private fun handleLimitReached(
+        packageName: String,
+        appName: String,
+        usageMillis: Long,
+        limitMillis: Long
+    ) {
+        serviceScope.launch {
+            if (!warningHistoryStore.wasExceededWarningSentToday(packageName)) {
+                notificationManager.showExceededNotification(
+                    appName = appName,
+                    usageStr = TimeFormatters.formatDurationShort(usageMillis),
+                    limitStr = TimeFormatters.formatDurationShort(limitMillis),
+                    packageName = packageName
+                )
+                warningHistoryStore.markExceededWarningSent(packageName)
+            }
+        }
+        PurposeGateStore.clear(this)
+        stopForegroundSession()
+        launchUsageLimitWarning(appName)
     }
 
     private fun launchUsageLimitWarning(appName: String) {

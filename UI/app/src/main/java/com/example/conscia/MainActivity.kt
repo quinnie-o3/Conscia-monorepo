@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Rule
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,7 +31,8 @@ import com.example.conscia.ui.onboarding.ChooseAppsToTrackScreen
 import com.example.conscia.ui.onboarding.StarterRulesRoute
 import com.example.conscia.ui.permissions.PermissionsRoute
 import com.example.conscia.ui.rules.CreateEditRuleScreen
-import com.example.conscia.ui.rules.RulesRoute
+import com.example.conscia.ui.rules.SelectRuleAppScreen
+import com.example.conscia.ui.tracked.TrackedAppsRoute
 import com.example.conscia.ui.intention.SessionHistoryScreen
 import com.example.conscia.ui.insights.InsightsRoute
 import com.example.conscia.ui.settings.SettingsRoute
@@ -87,24 +89,13 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
 
     val routeAfterAuth = if (isOnboardingCompleted == true) "dashboard" else "choose_apps"
 
-    LaunchedEffect(accessToken, isOnboardingCompleted, currentDestination?.route) {
-        val currentRoute = currentDestination?.route
-        val authRoute = currentRoute?.takeIf { it in listOf("login", "register") }
-        if (accessToken != null && authRoute != null) {
-            navController.navigate(routeAfterAuth) {
-                popUpTo(authRoute) { inclusive = true }
-                launchSingleTop = true
-            }
-        }
-    }
-
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp) {
                     val items = listOf(
                         Triple("dashboard", "Home", Icons.Default.Dashboard),
-                        Triple("rules", "Tracked", Icons.Default.Rule),
+                        Triple("rules", "Rules", Icons.AutoMirrored.Filled.Rule),
                         Triple("insights", "Insights", Icons.Default.Analytics),
                         Triple("settings", "Settings", Icons.Default.Settings)
                     )
@@ -186,21 +177,53 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
 
             // --- MAIN ---
             composable("dashboard") { 
-                DashboardRoute(onNavigateToSettings = { navController.navigate("settings") }) 
+                DashboardRoute(
+                    onNavigateToSettings = { navController.navigate("settings") },
+                    onNewGoalClick = { navController.navigate("create_rule/-1") }
+                )
             }
             composable("rules") { 
-                RulesRoute(
+                TrackedAppsRoute(
                     onBackClick = { navController.popBackStack() }, 
-                    onCreateRuleClick = { navController.navigate("create_rule/-1") }, 
-                    onEditRuleClick = { id -> navController.navigate("create_rule/$id") },
-                    onSessionsClick = { navController.navigate("sessions") }
+                    onAddClick = { navController.navigate("create_rule/-1") },
+                    onAppClick = { id -> navController.navigate("create_rule/$id") }
                 ) 
             }
             composable("create_rule/{ruleId}", arguments = listOf(navArgument("ruleId") { type = NavType.LongType })) { backStack ->
+                val returnToRules = {
+                    if (!navController.popBackStack("rules", inclusive = false)) {
+                        navController.navigate("rules") {
+                            popUpTo("dashboard") { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    }
+                }
+                val selectedPackageName by backStack.savedStateHandle
+                    .getStateFlow("selectedAppPackageName", "")
+                    .collectAsState()
+                val selectedAppName by backStack.savedStateHandle
+                    .getStateFlow("selectedAppName", "")
+                    .collectAsState()
                 CreateEditRuleScreen(
                     ruleId = backStack.arguments?.getLong("ruleId"), 
-                    onBackClick = { navController.popBackStack() }, 
-                    onSelectAppClick = { /* Navigate to app selection if needed */ }
+                    onBackClick = returnToRules,
+                    onSelectAppClick = { navController.navigate("select_rule_app") },
+                    selectedAppPackageName = selectedPackageName,
+                    selectedAppName = selectedAppName,
+                    onSelectedAppConsumed = {
+                        backStack.savedStateHandle["selectedAppPackageName"] = ""
+                        backStack.savedStateHandle["selectedAppName"] = ""
+                    }
+                )
+            }
+            composable("select_rule_app") {
+                SelectRuleAppScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onAppSelected = { packageName, appName ->
+                        navController.previousBackStackEntry?.savedStateHandle?.set("selectedAppPackageName", packageName)
+                        navController.previousBackStackEntry?.savedStateHandle?.set("selectedAppName", appName)
+                        navController.popBackStack()
+                    }
                 )
             }
             composable("sessions") {

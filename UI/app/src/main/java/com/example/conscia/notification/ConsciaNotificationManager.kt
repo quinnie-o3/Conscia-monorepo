@@ -25,7 +25,7 @@ class ConsciaNotificationManager @Inject constructor(@ApplicationContext private
     fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Usage limit warnings"
-            val descriptionText = "Alerts when tracked apps approach or exceed their usage limits"
+            val descriptionText = "Alerts when rules approach or exceed their usage limits"
             val importance = NotificationManager.IMPORTANCE_HIGH
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText
