@@ -43,7 +43,6 @@
         android:label="Conscia"
         android:roundIcon="@drawable/logo"
         android:supportsRtl="true"
-        android:testOnly="true"
         android:theme="@style/Theme.Conscia"
         android:usesCleartextTraffic="true" >
         <activity

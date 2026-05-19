@@ -97,12 +97,11 @@ export class TrackingRuleService {
   }
 
   async findActiveRules(
-    _anonymousUserId: string | undefined,
+    anonymousUserId: string | undefined,
     deviceId: string,
   ) {
-    // This is mainly for anonymous checks if any, usually we protect with JwtAuthGuard
     return this.trackingRuleModel.find({
-      deviceId,
+      ...this.buildAnonymousIdentityFilter(anonymousUserId, deviceId),
       trackingEnabled: true,
     });
   }

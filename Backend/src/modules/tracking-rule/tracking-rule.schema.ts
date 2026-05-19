@@ -6,8 +6,11 @@ export type TrackingRuleDocument = HydratedDocument<TrackingRule>;
 
 @Schema({ timestamps: true })
 export class TrackingRule {
+  @Prop({ index: true })
+  anonymousUserId?: string;
+
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name, index: true })
-  userId: Types.ObjectId | string;
+  userId?: Types.ObjectId | string;
 
   @Prop({ required: true, index: true })
   deviceId: string;
@@ -47,5 +50,11 @@ export const TrackingRuleSchema = SchemaFactory.createForClass(TrackingRule);
 
 TrackingRuleSchema.index(
   { userId: 1, packageName: 1 },
-  { unique: true },
+  {
+    partialFilterExpression: {
+      userId: { $exists: true },
+    },
+    unique: true,
+  },
 );
+TrackingRuleSchema.index({ anonymousUserId: 1, deviceId: 1 });
