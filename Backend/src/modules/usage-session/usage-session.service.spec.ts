@@ -11,6 +11,7 @@ describe('UsageSessionService', () => {
   };
   const deviceService = {
     markSynced: jest.fn(),
+    resolveAnonymousUserIdForDevice: jest.fn(),
   };
 
   let service: UsageSessionService;
@@ -30,9 +31,9 @@ describe('UsageSessionService', () => {
       upsertedCount: 1,
     });
     deviceService.markSynced.mockResolvedValue(undefined);
+    deviceService.resolveAnonymousUserIdForDevice.mockResolvedValue('anon-1');
 
-    const result = await service.sync({
-      anonymousUserId: 'anon-1',
+    const result = await service.sync('user-1', {
       sessions: [
         {
           appName: 'YouTube',
@@ -59,7 +60,10 @@ describe('UsageSessionService', () => {
 
     expect(bulkWrite).toHaveBeenCalledTimes(1);
     expect(bulkWrite.mock.calls[0][0]).toHaveLength(1);
-    expect(deviceService.markSynced).toHaveBeenCalledWith('device-1', 'anon-1');
+    expect(deviceService.markSynced).toHaveBeenCalledWith('device-1', {
+      anonymousUserId: 'anon-1',
+      userId: 'user-1',
+    });
     expect(result).toEqual({
       insertedCount: 1,
       matchedCount: 0,

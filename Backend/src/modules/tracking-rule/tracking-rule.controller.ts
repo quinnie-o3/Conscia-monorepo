@@ -5,6 +5,7 @@ import {
   Get,
   Post,
   Query,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -26,9 +27,15 @@ import { UpsertTrackingRuleDto } from './dto/upsert-tracking-rule.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('tracking-rules')
 export class TrackingRuleController {
-  constructor(
-    private readonly trackingRuleService: TrackingRuleService,
-  ) {}
+  constructor(private readonly trackingRuleService: TrackingRuleService) {}
+
+  private requireUser(user: AuthenticatedUser | undefined) {
+    if (!user?.userId) {
+      throw new UnauthorizedException('Authenticated user is required');
+    }
+
+    return user;
+  }
 
   @ApiOperation({ summary: 'Create or update a tracking rule' })
   @ApiBody({ type: UpsertTrackingRuleDto })
@@ -49,7 +56,8 @@ export class TrackingRuleController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpsertTrackingRuleDto,
   ) {
-    const rule = await this.trackingRuleService.upsert(user.userId, dto);
+    const currentUser = this.requireUser(user);
+    const rule = await this.trackingRuleService.upsert(currentUser.userId, dto);
 
     return {
       success: true,
@@ -77,8 +85,9 @@ export class TrackingRuleController {
     @CurrentUser() user: AuthenticatedUser,
     @Query('deviceId') deviceId: string,
   ) {
+    const currentUser = this.requireUser(user);
     const rules = await this.trackingRuleService.findAllForUser(
-      user.userId,
+      currentUser.userId,
       deviceId,
     );
 
@@ -114,8 +123,9 @@ export class TrackingRuleController {
     @Query('deviceId') deviceId: string,
     @Query('packageName') packageName: string,
   ) {
+    const currentUser = this.requireUser(user);
     await this.trackingRuleService.deleteOneForUser(
-      user.userId,
+      currentUser.userId,
       deviceId,
       packageName,
     );

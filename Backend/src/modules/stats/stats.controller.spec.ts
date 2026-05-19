@@ -28,6 +28,7 @@ describe('StatsController', () => {
         timezone: undefined,
         to: '2026-05-10',
       },
+      { userId: 'user-1' },
       'device-from-header',
       'Asia/Saigon',
     );
@@ -40,6 +41,7 @@ describe('StatsController', () => {
       undefined,
       undefined,
       'Asia/Saigon',
+      'user-1',
     );
   });
 
@@ -55,6 +57,7 @@ describe('StatsController', () => {
           timezone: undefined,
           to: undefined,
         },
+        { userId: 'user-1' },
         undefined,
         undefined,
       ),

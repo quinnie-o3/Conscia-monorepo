@@ -21,9 +21,12 @@ describe('UsageSessionController', () => {
     });
 
     await expect(
-      controller.sync({
-        sessions: [],
-      }),
+      controller.sync(
+        { userId: 'user-1' },
+        {
+          sessions: [],
+        },
+      ),
     ).resolves.toEqual({
       success: true,
       message: 'Usage sessions synced successfully',

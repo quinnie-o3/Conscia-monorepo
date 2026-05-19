@@ -1,11 +1,12 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 
 import { normalizeOptionalString } from '../../common/device-identity.util';
 import { User, UserDocument } from './user.schema';
@@ -47,11 +48,15 @@ export class UserService {
     return email.trim().toLowerCase();
   }
 
+  private assertValidUserId(id: string) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid user id');
+    }
+  }
+
   private normalizePublicUser(user: UserDocument | User): PublicUser {
     const plainUser =
-      'toObject' in user
-        ? (user.toObject() as any)
-        : ({ ...user } as any);
+      'toObject' in user ? (user.toObject() as any) : ({ ...user } as any);
 
     const email = plainUser.email || '';
     const fallbackName = email.split('@')[0] || 'User';
@@ -67,6 +72,7 @@ export class UserService {
   }
 
   async findById(id: string) {
+    this.assertValidUserId(id);
     return this.userModel.findById(id).exec();
   }
 
@@ -95,7 +101,8 @@ export class UserService {
     }
 
     const password = await bcrypt.hash(input.password, this.saltRounds);
-    const displayName = normalizeOptionalString(input.displayName) || email.split('@')[0];
+    const displayName =
+      normalizeOptionalString(input.displayName) || email.split('@')[0];
 
     const user = await this.userModel.create({
       avatarUrl: normalizeOptionalString(input.avatarUrl),
@@ -129,8 +136,13 @@ export class UserService {
   }
 
   async createGoogleUser(profile: GoogleProfileData) {
-    const email = profile.email ? this.normalizeEmail(profile.email) : undefined;
-    const displayName = normalizeOptionalString(profile.displayName) || email?.split('@')[0] || 'Google User';
+    const email = profile.email
+      ? this.normalizeEmail(profile.email)
+      : undefined;
+    const displayName =
+      normalizeOptionalString(profile.displayName) ||
+      email?.split('@')[0] ||
+      'Google User';
 
     return this.userModel.create({
       avatarUrl: normalizeOptionalString(profile.avatarUrl),
@@ -142,18 +154,22 @@ export class UserService {
   }
 
   async update(userId: string, dto: UpdateUserDto) {
+    this.assertValidUserId(userId);
     return this.userModel
       .findByIdAndUpdate(userId, { $set: dto }, { new: true })
       .exec();
   }
 
   async attachGoogleAccount(userId: string, profile: GoogleProfileData) {
+    this.assertValidUserId(userId);
     const update: any = { googleId: profile.googleId };
 
     const user = await this.userModel.findById(userId);
     if (user) {
-        if (!user.displayName && profile.displayName) update.displayName = profile.displayName;
-        if (!user.avatarUrl && profile.avatarUrl) update.avatarUrl = profile.avatarUrl;
+      if (!user.displayName && profile.displayName)
+        update.displayName = profile.displayName;
+      if (!user.avatarUrl && profile.avatarUrl)
+        update.avatarUrl = profile.avatarUrl;
     }
 
     return this.userModel

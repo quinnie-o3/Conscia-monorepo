@@ -4,6 +4,7 @@ import {
   Get,
   Headers,
   Query,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -24,6 +25,14 @@ import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.in
 @Controller(['stats', 'v1/stats'])
 export class StatsController {
   constructor(private readonly statsService: StatsService) {}
+
+  private requireUser(user: AuthenticatedUser | undefined) {
+    if (!user?.userId) {
+      throw new UnauthorizedException('Authenticated user is required');
+    }
+
+    return user;
+  }
 
   private resolveDeviceId(
     queryDeviceId: string | undefined,
@@ -60,12 +69,13 @@ export class StatsController {
     @CurrentUser() user: AuthenticatedUser,
     @Headers('x-device-id') headerDeviceId?: string,
   ) {
+    const currentUser = this.requireUser(user);
     const deviceId = this.resolveDeviceId(query.deviceId, headerDeviceId);
     const data = await this.statsService.getDailySummary(
       query.anonymousUserId,
       deviceId,
       query.date,
-      user.userId,
+      currentUser.userId,
     );
 
     return {
@@ -103,6 +113,7 @@ export class StatsController {
     @Headers('x-device-id') headerDeviceId?: string,
     @Headers('x-timezone') headerTimeZone?: string,
   ) {
+    const currentUser = this.requireUser(user);
     const deviceId = this.resolveDeviceId(query.deviceId, headerDeviceId);
     const timeZone = query.timezone?.trim() || headerTimeZone?.trim();
     const data = await this.statsService.getUsageByPurpose(
@@ -113,7 +124,7 @@ export class StatsController {
       query.period,
       query.date,
       timeZone,
-      user.userId,
+      currentUser.userId,
     );
 
     return {

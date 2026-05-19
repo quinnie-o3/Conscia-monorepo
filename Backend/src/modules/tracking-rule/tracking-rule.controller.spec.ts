@@ -22,12 +22,15 @@ describe('TrackingRuleController', () => {
     trackingRuleService.upsert.mockResolvedValue(rule);
 
     await expect(
-      controller.upsert({
-        appName: 'YouTube',
-        dailyLimitMinutes: 60,
-        deviceId: 'device-1',
-        packageName: 'com.google.android.youtube',
-      }),
+      controller.upsert(
+        { userId: 'user-1' },
+        {
+          appName: 'YouTube',
+          dailyLimitMinutes: 60,
+          deviceId: 'device-1',
+          packageName: 'com.google.android.youtube',
+        },
+      ),
     ).resolves.toEqual({
       success: true,
       message: 'Tracking rule saved successfully',

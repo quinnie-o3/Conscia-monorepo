@@ -1,4 +1,10 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -15,16 +21,17 @@ import { UsageSessionService } from './usage-session.service';
 @ApiTags('Usage Sessions')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard)
-@Controller([
-  'usage-sessions',
-  'sessions',
-  'v1/usage-sessions',
-  'v1/sessions',
-])
+@Controller(['usage-sessions', 'sessions', 'v1/usage-sessions', 'v1/sessions'])
 export class UsageSessionController {
-  constructor(
-    private readonly usageSessionService: UsageSessionService,
-  ) {}
+  constructor(private readonly usageSessionService: UsageSessionService) {}
+
+  private requireUser(user: AuthenticatedUser | undefined) {
+    if (!user?.userId) {
+      throw new UnauthorizedException('Authenticated user is required');
+    }
+
+    return user;
+  }
 
   @ApiOperation({ summary: 'Sync usage sessions from device to backend' })
   @ApiBody({ type: SyncUsageSessionsDto })
@@ -45,7 +52,8 @@ export class UsageSessionController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: SyncUsageSessionsDto,
   ) {
-    const result = await this.usageSessionService.sync(user.userId, dto);
+    const currentUser = this.requireUser(user);
+    const result = await this.usageSessionService.sync(currentUser.userId, dto);
 
     return {
       success: true,
