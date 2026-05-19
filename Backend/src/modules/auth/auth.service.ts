@@ -49,6 +49,11 @@ export class AuthService {
 
   private async buildAuthResponse(user: UserDocument): Promise<AuthResponse> {
     const publicUser = this.userService.toPublicUser(user);
+
+    if (!publicUser) {
+      throw new UnauthorizedException('Invalid user');
+    }
+
     const payload: JwtPayload = {
       displayName: publicUser.displayName,
       email: publicUser.email,
