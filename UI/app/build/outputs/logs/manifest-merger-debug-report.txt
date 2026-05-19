@@ -1,9 +1,30 @@
 -- Merging decision tree log ---
+provider#androidx.startup.InitializationProvider
+INJECTED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:66:9-74:20
+MERGED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:29:9-37:20
+MERGED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:29:9-37:20
+MERGED from [androidx.lifecycle:lifecycle-process:2.8.6] C:\Users\Acer\.gradle\caches\8.10.2\transforms\45d11d76edc735de898d4db58e96bf8f\transformed\jetified-lifecycle-process-2.8.6\AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.lifecycle:lifecycle-process:2.8.6] C:\Users\Acer\.gradle\caches\8.10.2\transforms\45d11d76edc735de898d4db58e96bf8f\transformed\jetified-lifecycle-process-2.8.6\AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f0ea8e0407f34eb2106b5da4648c4edb\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f0ea8e0407f34eb2106b5da4648c4edb\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\3636a3a558539bcd8613cf440c6625be\transformed\jetified-profileinstaller-1.4.0\AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\3636a3a558539bcd8613cf440c6625be\transformed\jetified-profileinstaller-1.4.0\AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\cfec540a86419105b93858986d91767b\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:26:9-30:34
+MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\cfec540a86419105b93858986d91767b\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:26:9-30:34
+	tools:node
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:69:13-31
+	android:authorities
+		INJECTED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:68:13-68
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:32:13-37
+	android:name
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:67:13-67
 manifest
-ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:2:1-68:12
-INJECTED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:2:1-68:12
-INJECTED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:2:1-68:12
-INJECTED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:2:1-68:12
+ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:2:1-78:12
+INJECTED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:2:1-78:12
+INJECTED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:2:1-78:12
+INJECTED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:2:1-78:12
 MERGED from [com.google.android.material:material:1.12.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\9ce8c000d9a9e5ae1dba3e04248de8a1\transformed\material-1.12.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.2.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\d51213373cb561872de018d7a7dbe691\transformed\constraintlayout-2.2.0\AndroidManifest.xml:2:1-9:12
 MERGED from [io.coil-kt:coil-compose:2.7.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\d6323522090d570f7eb56c826b2e1282\transformed\jetified-coil-compose-2.7.0\AndroidManifest.xml:2:1-7:12
@@ -155,8 +176,8 @@ ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:15
 	android:name
 		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:15:23-70
 application
-ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:19:5-66:19
-INJECTED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:19:5-66:19
+ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:19:5-76:19
+INJECTED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:19:5-76:19
 MERGED from [com.google.android.material:material:1.12.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\9ce8c000d9a9e5ae1dba3e04248de8a1\transformed\material-1.12.0\AndroidManifest.xml:22:5-20
 MERGED from [com.google.android.material:material:1.12.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\9ce8c000d9a9e5ae1dba3e04248de8a1\transformed\material-1.12.0\AndroidManifest.xml:22:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.2.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\d51213373cb561872de018d7a7dbe691\transformed\constraintlayout-2.2.0\AndroidManifest.xml:7:5-20
@@ -263,6 +284,15 @@ ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:61
 		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:63:17-69
 	android:name
 		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:62:17-60
+meta-data#androidx.work.WorkManagerInitializer
+ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:70:13-73:39
+REJECTED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:34:13-36:52
+	tools:node
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:73:17-36
+	android:value
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:72:17-49
+	android:name
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:71:17-68
 uses-sdk
 INJECTED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml
@@ -527,30 +557,6 @@ uses-permission#android.permission.FOREGROUND_SERVICE
 ADDED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:26:5-77
 	android:name
 		ADDED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:26:22-74
-provider#androidx.startup.InitializationProvider
-ADDED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:29:9-37:20
-MERGED from [androidx.lifecycle:lifecycle-process:2.8.6] C:\Users\Acer\.gradle\caches\8.10.2\transforms\45d11d76edc735de898d4db58e96bf8f\transformed\jetified-lifecycle-process-2.8.6\AndroidManifest.xml:24:9-32:20
-MERGED from [androidx.lifecycle:lifecycle-process:2.8.6] C:\Users\Acer\.gradle\caches\8.10.2\transforms\45d11d76edc735de898d4db58e96bf8f\transformed\jetified-lifecycle-process-2.8.6\AndroidManifest.xml:24:9-32:20
-MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f0ea8e0407f34eb2106b5da4648c4edb\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
-MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f0ea8e0407f34eb2106b5da4648c4edb\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
-MERGED from [androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\3636a3a558539bcd8613cf440c6625be\transformed\jetified-profileinstaller-1.4.0\AndroidManifest.xml:24:9-32:20
-MERGED from [androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Acer\.gradle\caches\8.10.2\transforms\3636a3a558539bcd8613cf440c6625be\transformed\jetified-profileinstaller-1.4.0\AndroidManifest.xml:24:9-32:20
-MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\cfec540a86419105b93858986d91767b\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:26:9-30:34
-MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\cfec540a86419105b93858986d91767b\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:26:9-30:34
-	tools:node
-		ADDED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:33:13-31
-	android:authorities
-		ADDED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:31:13-68
-	android:exported
-		ADDED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:32:13-37
-	android:name
-		ADDED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:30:13-67
-meta-data#androidx.work.WorkManagerInitializer
-ADDED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:34:13-36:52
-	android:value
-		ADDED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:36:17-49
-	android:name
-		ADDED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:35:17-68
 service#androidx.work.impl.background.systemalarm.SystemAlarmService
 ADDED from [androidx.work:work-runtime:2.9.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\f6942201101f87dbdefe681b41bc449e\transformed\work-runtime-2.9.1\AndroidManifest.xml:39:9-45:35
 	android:enabled
