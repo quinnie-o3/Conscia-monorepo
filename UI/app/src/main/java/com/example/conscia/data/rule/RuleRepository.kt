@@ -22,32 +22,32 @@ class RuleRepository @Inject constructor(
         ruleDao.getRuleByPackageName(packageName)
 
     suspend fun insertRule(rule: RuleEntity) {
-        syncRuleToRemote(rule)
         ruleDao.insertRule(rule)
+        syncRuleToRemoteIfAuthenticated(rule)
     }
 
     suspend fun updateRule(rule: RuleEntity) {
         val previousRule = ruleDao.getRuleById(rule.id)
-        syncRuleToRemote(rule)
-        if (previousRule != null && previousRule.packageName != rule.packageName) {
-            deleteRemoteRule(previousRule.packageName)
-        }
         ruleDao.updateRule(rule)
+        syncRuleToRemoteIfAuthenticated(rule)
+        if (previousRule != null && previousRule.packageName != rule.packageName) {
+            deleteRemoteRuleIfAuthenticated(previousRule.packageName)
+        }
     }
 
     suspend fun deleteRule(rule: RuleEntity) {
-        deleteRemoteRule(rule.packageName)
         ruleDao.deleteRule(rule)
+        deleteRemoteRuleIfAuthenticated(rule.packageName)
     }
 
     suspend fun deleteAllLocalRules() {
         ruleDao.deleteAllRules()
     }
 
-    private suspend fun syncRuleToRemote(rule: RuleEntity) {
+    private suspend fun syncRuleToRemoteIfAuthenticated(rule: RuleEntity) {
         val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: dataStore.generateAndSaveDeviceId()
         if (dataStore.accessTokenFlow.firstOrNull() == null) {
-            throw IllegalStateException("Please sign in before saving rules.")
+            return
         }
 
         val request = TrackingRuleRequest(
@@ -62,22 +62,30 @@ class RuleRepository @Inject constructor(
             extensionCount = rule.extensionCount,
             lastExtensionDate = rule.lastExtensionDate.ifBlank { null }
         )
-        val response = apiService.upsertTrackingRule(request)
-        val body = response.body()
-        if (!response.isSuccessful || body?.success != true) {
-            throw IllegalStateException(body?.message ?: "Failed to sync rule with backend.")
+        try {
+            val response = apiService.upsertTrackingRule(request)
+            val body = response.body()
+            if (!response.isSuccessful || body?.success != true) {
+                throw IllegalStateException(body?.message ?: "Failed to sync rule with backend.")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
-    private suspend fun deleteRemoteRule(packageName: String) {
+    private suspend fun deleteRemoteRuleIfAuthenticated(packageName: String) {
         val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: dataStore.generateAndSaveDeviceId()
         if (dataStore.accessTokenFlow.firstOrNull() == null) {
-            throw IllegalStateException("Please sign in before deleting rules.")
+            return
         }
-        val response = apiService.deleteTrackingRule(deviceId, packageName)
-        val body = response.body()
-        if (!response.isSuccessful || body?.success != true) {
-            throw IllegalStateException(body?.message ?: "Failed to delete rule from backend.")
+        try {
+            val response = apiService.deleteTrackingRule(deviceId, packageName)
+            val body = response.body()
+            if (!response.isSuccessful || body?.success != true) {
+                throw IllegalStateException(body?.message ?: "Failed to delete rule from backend.")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
