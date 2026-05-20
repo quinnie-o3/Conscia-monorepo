@@ -7,8 +7,6 @@ drawable ic_launcher_background
 drawable killing_time_illustration
 drawable learning_illustration
 drawable logo
-drawable onboarding_illustration
-drawable security_illustration
 drawable work_illustration
 string default_web_client_id
 style Theme.Conscia

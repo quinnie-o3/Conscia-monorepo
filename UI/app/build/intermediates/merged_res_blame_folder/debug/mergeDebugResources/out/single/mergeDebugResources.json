@@ -12,10 +12,6 @@
         "source": "com.example.conscia.app-main-82:/drawable/entertainment_illustration.png"
     },
     {
-        "merged": "com.example.conscia.app-debug-80:/drawable_security_illustration.png.flat",
-        "source": "com.example.conscia.app-main-82:/drawable/security_illustration.png"
-    },
-    {
         "merged": "com.example.conscia.app-debug-80:/drawable_work_illustration.png.flat",
         "source": "com.example.conscia.app-main-82:/drawable/work_illustration.png"
     },
@@ -30,10 +26,6 @@
     {
         "merged": "com.example.conscia.app-debug-80:/drawable_killing_time_illustration.png.flat",
         "source": "com.example.conscia.app-main-82:/drawable/killing_time_illustration.png"
-    },
-    {
-        "merged": "com.example.conscia.app-debug-80:/drawable_onboarding_illustration.png.flat",
-        "source": "com.example.conscia.app-main-82:/drawable/onboarding_illustration.png"
     },
     {
         "merged": "com.example.conscia.app-debug-80:/drawable_learning_illustration.png.flat",

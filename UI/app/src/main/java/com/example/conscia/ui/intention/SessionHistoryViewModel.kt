@@ -2,6 +2,7 @@ package com.example.conscia.ui.intention
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.conscia.data.remote.RemoteUsageSyncRepository
 import com.example.conscia.data.remote.api.ConsciaApiService
 import com.example.conscia.data.remote.dto.AppUsageStats
 import com.example.conscia.data.TrackedAppsDataStore
@@ -26,6 +27,7 @@ data class SessionHistoryUiState(
 @HiltViewModel
 class SessionHistoryViewModel @Inject constructor(
     private val apiService: ConsciaApiService,
+    private val remoteUsageSyncRepository: RemoteUsageSyncRepository,
     private val dataStore: TrackedAppsDataStore
 ) : ViewModel() {
 
@@ -35,23 +37,32 @@ class SessionHistoryViewModel @Inject constructor(
     private val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
     init {
-        loadTodayHistory()
+        refresh(showLoading = true)
     }
 
-    fun loadTodayHistory() {
+    fun refresh(showLoading: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            if (showLoading) {
+                _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            }
             try {
+                runCatching { remoteUsageSyncRepository.syncRecentUsage(days = 1) }
                 val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: ""
                 val today = dateFormatter.format(Date())
                 val response = apiService.getDailyStats(deviceId, today)
                 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val data = response.body()?.data
+                    val sortedUsageStats = data?.byApp
+                        ?.sortedWith(
+                            compareByDescending<AppUsageStats> { it.durationSeconds }
+                                .thenBy { it.appName.lowercase(Locale.US) }
+                        )
+                        ?: emptyList()
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            usageStats = data?.byApp ?: emptyList(),
+                            usageStats = sortedUsageStats,
                             totalFocusMinutes = data?.totalTrackedMinutes ?: 0, // Lấy từ field totalTrackedMinutes của Backend
                             errorMessage = null
                         )
