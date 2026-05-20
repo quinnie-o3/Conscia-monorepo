@@ -223,6 +223,7 @@ class AccessibilityForegroundAppService : AccessibilityService() {
         }
         PurposeGateStore.clear(this)
         stopForegroundSession()
+        performGlobalAction(GLOBAL_ACTION_HOME)
         launchUsageLimitWarning(appName)
     }
 

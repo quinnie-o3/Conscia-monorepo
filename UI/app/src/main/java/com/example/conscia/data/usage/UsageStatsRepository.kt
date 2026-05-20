@@ -51,19 +51,12 @@ class UsageStatsRepository @Inject constructor(@ApplicationContext private val c
             }
             val startOfDay = dayCalendar.timeInMillis
             val endOfDay = startOfDay + (24 * 60 * 60 * 1000) - 1
-            
-            val stats = usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                startOfDay,
-                endOfDay
-            )
-            
-            val totalMillis = stats
-                ?.filter { it.totalTimeInForeground > 0 }
-                ?.filter { it.packageName != context.packageName }
-                ?.filter { packageNames.isEmpty() || it.packageName in packageNames }
-                ?.sumOf { it.totalTimeInForeground }
-                ?: 0L
+            val usageEndMillis = minOf(endOfDay, System.currentTimeMillis())
+
+            val totalMillis = collectUsageFromEvents(startOfDay, usageEndMillis)
+                .values
+                .filter { packageNames.isEmpty() || it.packageName in packageNames }
+                .sumOf { it.totalTimeInForegroundMillis }
             result.add(DailyUsagePoint(startOfDay, totalMillis))
         }
         result.sortedBy { it.dayStartMillis }
@@ -88,41 +81,23 @@ class UsageStatsRepository @Inject constructor(@ApplicationContext private val c
 
             val startOfDay = dayCalendar.timeInMillis
             val endOfDay = startOfDay + (24 * 60 * 60 * 1000) - 1
+            val usageEndMillis = minOf(endOfDay, System.currentTimeMillis())
             val localDate = dateFormatter.format(Date(startOfDay))
-            val stats = usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                startOfDay,
-                endOfDay
-            )
-
-            if (stats.isNullOrEmpty()) continue
-
-            stats
-                .filter { it.totalTimeInForeground > 0 }
-                .groupBy { it.packageName }
-                .forEach { (packageName, entries) ->
-                    val totalMillis = entries.sumOf { it.totalTimeInForeground }
-                    val lastTimeUsed = entries.maxOfOrNull { it.lastTimeUsed } ?: startOfDay
-                    val appName = try {
-                        val appInfo = packageManager.getApplicationInfo(packageName, 0)
-                        packageManager.getApplicationLabel(appInfo).toString()
-                    } catch (e: Exception) {
-                        packageName
-                    }
-
-                    if (packageName != context.packageName) {
-                        snapshots.add(
-                            DailyAppUsageSnapshot(
-                                packageName = packageName,
-                                appName = appName,
-                                totalTimeInForegroundMillis = totalMillis,
-                                lastTimeUsed = lastTimeUsed,
-                                dayStartMillis = startOfDay,
-                                dayEndMillis = endOfDay,
-                                localDate = localDate
-                            )
+            collectUsageFromEvents(startOfDay, usageEndMillis)
+                .values
+                .filter { it.totalTimeInForegroundMillis > 0 }
+                .forEach { usage ->
+                    snapshots.add(
+                        DailyAppUsageSnapshot(
+                            packageName = usage.packageName,
+                            appName = usage.appName,
+                            totalTimeInForegroundMillis = usage.totalTimeInForegroundMillis,
+                            lastTimeUsed = usage.lastTimeUsed,
+                            dayStartMillis = startOfDay,
+                            dayEndMillis = endOfDay,
+                            localDate = localDate
                         )
-                    }
+                    )
                 }
         }
 
@@ -133,62 +108,100 @@ class UsageStatsRepository @Inject constructor(@ApplicationContext private val c
     }
 
     private suspend fun getUsageForPeriod(startTime: Long, endTime: Long): List<AppUsageInfo> = withContext(Dispatchers.IO) {
-        val stats = usageStatsManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY,
-            startTime,
-            endTime
-        )
-
-        if (stats.isNullOrEmpty()) return@withContext emptyList<AppUsageInfo>()
-        val launchCounts = getLaunchCounts(startTime, endTime)
-
-        stats.filter { it.totalTimeInForeground > 0 }
-            .map { usageStats ->
-                val packageName = usageStats.packageName
-                val appName = try {
-                    val appInfo = packageManager.getApplicationInfo(packageName, 0)
-                    packageManager.getApplicationLabel(appInfo).toString()
-                } catch (e: Exception) {
-                    packageName
-                }
-                
-                AppUsageInfo(
-                    packageName = packageName,
-                    appName = appName,
-                    totalTimeInForegroundMillis = usageStats.totalTimeInForeground,
-                    lastTimeUsed = usageStats.lastTimeUsed
-                )
-            }
-            .filter { it.packageName != context.packageName } // Exclude own app
-            .groupBy { it.packageName }
-            .map { (pkg, list) ->
-                list.reduce { acc, info ->
-                    acc.copy(
-                        totalTimeInForegroundMillis = acc.totalTimeInForegroundMillis + info.totalTimeInForegroundMillis,
-                        lastTimeUsed = maxOf(acc.lastTimeUsed, info.lastTimeUsed)
-                    )
-                }
-                    .copy(launchCount = launchCounts[pkg] ?: 0)
-            }
+        collectUsageFromEvents(startTime, endTime)
+            .values
             .sortedByDescending { it.totalTimeInForegroundMillis }
     }
 
-    private fun getLaunchCounts(startTime: Long, endTime: Long): Map<String, Int> {
-        val counts = mutableMapOf<String, Int>()
+    private fun collectUsageFromEvents(startTime: Long, endTime: Long): Map<String, AppUsageInfo> {
+        if (endTime <= startTime) return emptyMap()
+
+        val usageByPackage = mutableMapOf<String, UsageAccumulator>()
+        val activeStarts = mutableMapOf<String, Long>()
         val events = usageStatsManager.queryEvents(startTime, endTime)
         val event = UsageEvents.Event()
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                counts[event.packageName] = (counts[event.packageName] ?: 0) + 1
+            val packageName = event.packageName ?: continue
+            if (packageName == context.packageName) continue
+
+            when (event.eventType) {
+                UsageEvents.Event.MOVE_TO_FOREGROUND -> {
+                    activeStarts.putIfAbsent(packageName, event.timeStamp.coerceAtLeast(startTime))
+                    usageByPackage.getOrPut(packageName) {
+                        UsageAccumulator(
+                            packageName = packageName,
+                            appName = resolveAppName(packageName)
+                        )
+                    }.launchCount += 1
+                }
+
+                UsageEvents.Event.MOVE_TO_BACKGROUND -> {
+                    val foregroundStartedAt = activeStarts.remove(packageName) ?: continue
+                    val endedAt = event.timeStamp.coerceIn(startTime, endTime)
+                    val durationMillis = (endedAt - foregroundStartedAt).coerceAtLeast(0L)
+                    if (durationMillis > 0L) {
+                        usageByPackage.getOrPut(packageName) {
+                            UsageAccumulator(
+                                packageName = packageName,
+                                appName = resolveAppName(packageName)
+                            )
+                        }.apply {
+                            totalTimeInForegroundMillis += durationMillis
+                            lastTimeUsed = maxOf(lastTimeUsed, endedAt)
+                        }
+                    }
+                }
             }
         }
 
-        return counts
+        activeStarts.forEach { (packageName, foregroundStartedAt) ->
+            val durationMillis = (endTime - foregroundStartedAt).coerceAtLeast(0L)
+            if (durationMillis > 0L) {
+                usageByPackage.getOrPut(packageName) {
+                    UsageAccumulator(
+                        packageName = packageName,
+                        appName = resolveAppName(packageName)
+                    )
+                }.apply {
+                    totalTimeInForegroundMillis += durationMillis
+                    lastTimeUsed = maxOf(lastTimeUsed, endTime)
+                }
+            }
+        }
+
+        return usageByPackage
+            .filterValues { it.totalTimeInForegroundMillis > 0L }
+            .mapValues { (_, usage) ->
+                AppUsageInfo(
+                    packageName = usage.packageName,
+                    appName = usage.appName,
+                    totalTimeInForegroundMillis = usage.totalTimeInForegroundMillis,
+                    lastTimeUsed = usage.lastTimeUsed,
+                    launchCount = usage.launchCount
+                )
+            }
     }
 
     suspend fun getTopUsedApps(limit: Int = 5): List<AppUsageInfo> {
         return getTodayUsage().take(limit)
     }
+
+    private fun resolveAppName(packageName: String): String {
+        return try {
+            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            packageManager.getApplicationLabel(appInfo).toString()
+        } catch (e: Exception) {
+            packageName
+        }
+    }
+
+    private data class UsageAccumulator(
+        val packageName: String,
+        val appName: String,
+        var totalTimeInForegroundMillis: Long = 0L,
+        var lastTimeUsed: Long = 0L,
+        var launchCount: Int = 0
+    )
 }

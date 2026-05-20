@@ -40,7 +40,7 @@ data class CreateEditRuleUiState(
     val isFormValid: Boolean = isAppValid && isIntentionValid && isLimitValid
 
     companion object {
-        val allowedMinuteValues = setOf(0, 15, 30, 45)
+        val allowedMinuteValues = 0..59
     }
 }
 
@@ -184,7 +184,7 @@ class CreateEditRuleViewModel @Inject constructor(
                     it.copy(
                         isSaving = false,
                         showErrors = true,
-                        errorMessage = "Limit must be between 00:15 and 23:45, in 15-minute steps."
+                        errorMessage = "Limit must be between 00:15 and 23:59."
                     )
                 }
                 return@launch
@@ -250,9 +250,6 @@ class CreateEditRuleViewModel @Inject constructor(
     private fun Int.toTwoDigitString(): String = toString().padStart(2, '0')
 
     private fun normalizeMinute(value: Int): Int {
-        return when (value) {
-            0, 15, 30, 45 -> value
-            else -> (value / 15 * 15).coerceIn(0, 45)
-        }
+        return value.coerceIn(0, 59)
     }
 }

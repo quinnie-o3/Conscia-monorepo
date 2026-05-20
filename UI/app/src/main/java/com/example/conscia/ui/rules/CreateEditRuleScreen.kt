@@ -194,7 +194,7 @@ fun CreateEditRuleScreen(
                 onClick = { showLimitPicker = true }
             )
             if (limitError) {
-                Text("Minimum tracking limit is 00:15. Minutes must be 00, 15, 30, or 45.", color = Color.Red, style = MaterialTheme.typography.bodySmall)
+                Text("Minimum tracking limit is 00:15. Minutes must be between 00 and 59.", color = Color.Red, style = MaterialTheme.typography.bodySmall)
             }
 
             // 4. Options
@@ -304,7 +304,7 @@ fun LimitTimePickerDialog(
                 )
                 TimePickerColumn(
                     title = "Minute",
-                    values = listOf(0, 15, 30, 45),
+                    values = (0..59).toList(),
                     selectedValue = selectedMinute,
                     formatter = { it.toString().padStart(2, '0') },
                     onValueSelected = onMinuteSelected,
