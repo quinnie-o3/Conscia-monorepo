@@ -71,8 +71,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepository) {
     val scope = rememberCoroutineScope()
-    val isOnboardingCompleted by dataStore.isOnboardingCompletedFlow.collectAsState(initial = null)
-    val accessToken by dataStore.accessTokenFlow.collectAsState(initial = null)
+    val appPreferences by dataStore.appPreferencesFlow.collectAsState(initial = null)
     val isDarkMode by dataStore.isDarkModeFlow.collectAsState(initial = isSystemInDarkTheme())
     
     val navController = rememberNavController()
@@ -82,12 +81,24 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
     val screensWithBottomBar = listOf("dashboard", "rules", "insights", "settings")
     val showBottomBar = currentDestination?.route?.split("/")?.firstOrNull() in screensWithBottomBar
 
-    if (isOnboardingCompleted == null) {
+    if (appPreferences == null) {
         Box(modifier = Modifier.fillMaxSize())
         return
     }
 
-    val routeAfterAuth = if (isOnboardingCompleted == true) "dashboard" else "choose_apps"
+    val accessToken = appPreferences?.accessToken
+    val isOnboardingCompleted = appPreferences?.isOnboardingCompleted == true
+    val routeAfterAuth = if (isOnboardingCompleted) "dashboard" else "choose_apps"
+
+    LaunchedEffect(accessToken, currentDestination?.route) {
+        val route = currentDestination?.route
+        if (accessToken == null && route != null && route != "login" && route != "register") {
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = {

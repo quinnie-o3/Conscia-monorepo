@@ -25,14 +25,28 @@ object NetworkModule {
     @Singleton
     fun provideAuthInterceptor(dataStore: TrackedAppsDataStore): Interceptor {
         return Interceptor { chain ->
+            val request = chain.request()
             val token = runBlocking {
                 dataStore.accessTokenFlow.firstOrNull()
             }
-            val requestBuilder = chain.request().newBuilder()
+            val requestBuilder = request.newBuilder()
             if (!token.isNullOrEmpty()) {
                 requestBuilder.addHeader("Authorization", "Bearer $token")
             }
-            chain.proceed(requestBuilder.build())
+            val response = chain.proceed(requestBuilder.build())
+            val path = request.url.encodedPath
+            val isAuthRequest = path.endsWith("/auth/login") ||
+                path.endsWith("/auth/register") ||
+                path.endsWith("/auth/google") ||
+                path.endsWith("/auth/reset-password")
+
+            if (response.code == 401 && !isAuthRequest) {
+                runBlocking {
+                    dataStore.clearAuth()
+                }
+            }
+
+            response
         }
     }
 

@@ -63,6 +63,8 @@ class AuthViewModel @Inject constructor(
                 _authState.value = AuthState.Error(
                     if (e is java.net.SocketTimeoutException) {
                         "Server is taking too long. Please try again in a moment."
+                    } else if (e is IllegalStateException && !e.message.isNullOrBlank()) {
+                        e.message.orEmpty()
                     } else {
                         "Unable to sign in. Please check your connection and try again."
                     }
@@ -86,7 +88,13 @@ class AuthViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Registration failed", e)
-                _authState.value = AuthState.Error("Unable to create account. Please try again.")
+                _authState.value = AuthState.Error(
+                    if (e is IllegalStateException && !e.message.isNullOrBlank()) {
+                        e.message.orEmpty()
+                    } else {
+                        "Unable to create account. Please try again."
+                    }
+                )
             }
         }
     }
@@ -107,7 +115,13 @@ class AuthViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Google sign in failed", e)
-                _authState.value = AuthState.Error("Google sign in connection error")
+                _authState.value = AuthState.Error(
+                    if (e is IllegalStateException && !e.message.isNullOrBlank()) {
+                        e.message.orEmpty()
+                    } else {
+                        "Google sign in connection error"
+                    }
+                )
             }
         }
     }
@@ -127,6 +141,8 @@ class AuthViewModel @Inject constructor(
             data.user.avatarUrl
         )
 
+        refreshProfileAfterAuth()
+
         _authState.value = AuthState.Success(email)
 
         viewModelScope.launch {
@@ -135,6 +151,29 @@ class AuthViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Rule sync after auth failed", e)
             }
+        }
+    }
+
+    private suspend fun refreshProfileAfterAuth() {
+        try {
+            val response = apiService.getUserProfile()
+            val profile = response.body()?.data
+
+            if (response.code() == 401) {
+                dataStore.clearAuth()
+                throw IllegalStateException("Session expired. Please sign in again.")
+            }
+
+            if (response.isSuccessful && response.body()?.success == true && profile != null) {
+                dataStore.updateUserInfo(
+                    profile.displayName.orEmpty(),
+                    profile.avatarUrl.orEmpty()
+                )
+            }
+        } catch (e: IllegalStateException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Profile refresh after auth failed", e)
         }
     }
 
