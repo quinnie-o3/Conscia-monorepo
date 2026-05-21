@@ -10,7 +10,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.conscia.MainActivity
 import com.example.conscia.R
-import com.example.conscia.presentation.warning.UsageLimitWarningActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,11 +36,8 @@ class ConsciaNotificationManager @Inject constructor(@ApplicationContext private
     }
 
     fun showExceededNotification(appName: String, usageStr: String, limitStr: String, packageName: String) {
-        val intent = Intent(context, UsageLimitWarningActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra(UsageLimitWarningActivity.EXTRA_APP_NAME, appName)
-            putExtra(UsageLimitWarningActivity.EXTRA_USAGE_TEXT, usageStr)
-            putExtra(UsageLimitWarningActivity.EXTRA_LIMIT_TEXT, limitStr)
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         val pendingIntent: PendingIntent = PendingIntent.getActivity(
             context, packageName.hashCode(), intent, 

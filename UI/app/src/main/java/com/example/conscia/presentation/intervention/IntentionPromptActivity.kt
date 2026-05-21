@@ -55,6 +55,7 @@ class IntentionPromptActivity : ComponentActivity() {
         setContent {
             ConsciaAppTheme {
                 BackHandler {
+                    PurposeGateStore.clear(this@IntentionPromptActivity)
                     goHome()
                     finish()
                 }
@@ -77,6 +78,7 @@ class IntentionPromptActivity : ComponentActivity() {
                                 finish()
                             },
                             onWrongPurpose = {
+                                PurposeGateStore.clear(this@IntentionPromptActivity)
                                 goHome()
                                 finish()
                             }
