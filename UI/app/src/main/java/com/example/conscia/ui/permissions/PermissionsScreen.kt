@@ -1,6 +1,7 @@
 package com.example.conscia.ui.permissions
 
 import android.app.AppOpsManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -28,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.example.conscia.monitoring.AccessibilityForegroundAppService
+import com.example.conscia.util.NotificationPermissionHelper
 
 @Composable
 fun PermissionsRoute(onContinueClick: () -> Unit) {
@@ -40,6 +43,7 @@ fun PermissionsRoute(onContinueClick: () -> Unit) {
     var isUsageGranted by remember { mutableStateOf(checkUsageStatsPermission(context)) }
     var isOverlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var isNotificationGranted by remember { mutableStateOf(checkNotificationAccess(context)) }
+    var isAccessibilityGranted by remember { mutableStateOf(checkAccessibilityAccess(context)) }
     var currentStepIndex by rememberSaveable { mutableIntStateOf(0) }
     var skippedStepIndexes by rememberSaveable { mutableStateOf(setOf<Int>()) }
 
@@ -54,6 +58,18 @@ fun PermissionsRoute(onContinueClick: () -> Unit) {
             isRequired = true,
             onEnableClick = {
                 context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+            }
+        ),
+        PermissionStep(
+            title = "Accessibility Service",
+            statusLabel = "Required",
+            description = "Detect selected apps while you are using them",
+            supportingNote = "Required for real-time intervention. Without it, Conscia can calculate usage later but cannot move you out of an app at the limit.",
+            icon = Icons.Default.Layers,
+            isGranted = isAccessibilityGranted,
+            isRequired = true,
+            onEnableClick = {
+                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             }
         ),
         PermissionStep(
@@ -75,13 +91,22 @@ fun PermissionsRoute(onContinueClick: () -> Unit) {
         PermissionStep(
             title = "Notification Access",
             statusLabel = "Optional",
-            description = "Detect distracting notifications",
-            supportingNote = "Helps with focus features by identifying notifications that might pull you away.",
+            description = "Show reminders when a limit is reached",
+            supportingNote = "Used for limit notifications. The real-time app exit still depends on the Accessibility Service.",
             icon = Icons.Default.NotificationsActive,
             isGranted = isNotificationGranted,
             isRequired = false,
             onEnableClick = {
-                context.startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    }
+                } else {
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                    }
+                }
+                context.startActivity(intent)
             }
         )
     )
@@ -99,6 +124,7 @@ fun PermissionsRoute(onContinueClick: () -> Unit) {
                 isUsageGranted = checkUsageStatsPermission(context)
                 isOverlayGranted = Settings.canDrawOverlays(context)
                 isNotificationGranted = checkNotificationAccess(context)
+                isAccessibilityGranted = checkAccessibilityAccess(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -407,6 +433,17 @@ private fun checkUsageStatsPermission(context: Context): Boolean {
 }
 
 private fun checkNotificationAccess(context: Context): Boolean {
-    val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-    return flat != null && flat.contains(context.packageName)
+    return NotificationPermissionHelper.hasNotificationPermission(context)
+}
+
+private fun checkAccessibilityAccess(context: Context): Boolean {
+    val flat = Settings.Secure.getString(
+        context.contentResolver,
+        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+    ) ?: return false
+    val expected = ComponentName(
+        context,
+        AccessibilityForegroundAppService::class.java
+    ).flattenToString()
+    return flat.split(':').any { it.equals(expected, ignoreCase = true) }
 }

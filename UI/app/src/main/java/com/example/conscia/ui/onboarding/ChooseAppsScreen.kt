@@ -20,7 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.conscia.model.TrackedAppInfo
 import com.example.conscia.ui.components.InstalledAppIcon
 
@@ -30,7 +30,7 @@ fun ChooseAppsToTrackScreen(
     onSaveSelection: () -> Unit,
     onSkipSelection: () -> Unit = onSaveSelection,
     isEditingSelection: Boolean = false,
-    viewModel: ChooseAppsViewModel = viewModel()
+    viewModel: ChooseAppsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val primaryGreen = Color(0xFF006654)

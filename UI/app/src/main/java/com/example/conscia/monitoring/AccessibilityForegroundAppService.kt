@@ -9,6 +9,7 @@ import com.example.conscia.data.usage.UsageStatsRepository
 import com.example.conscia.data.warning.WarningHistoryStore
 import com.example.conscia.notification.ConsciaNotificationManager
 import com.example.conscia.presentation.intervention.IntentionPromptActivity
+import com.example.conscia.presentation.warning.UsageLimitWarningActivity
 import com.example.conscia.util.TimeFormatters
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -288,7 +289,15 @@ class AccessibilityForegroundAppService : AccessibilityService() {
         }
         PurposeGateStore.clear(this)
         stopForegroundSession()
-        performGlobalAction(GLOBAL_ACTION_HOME)
+        launchLimitWarning(appName)
+    }
+
+    private fun launchLimitWarning(appName: String) {
+        val intent = Intent(this, UsageLimitWarningActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra(UsageLimitWarningActivity.EXTRA_APP_NAME, appName)
+        }
+        startActivity(intent)
     }
 
     override fun onInterrupt() = Unit
