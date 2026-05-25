@@ -61,13 +61,20 @@ class TrackedAppsDataStore(private val context: Context) {
     val isDarkModeFlow: Flow<Boolean> = appPreferencesFlow.map { it.isDarkMode }
     val lastUsedEmailFlow: Flow<String?> = appPreferencesFlow.map { it.lastUsedEmail }
 
-    suspend fun saveAuthToken(token: String, email: String, name: String?, avatar: String?) {
+    suspend fun saveAuthToken(
+        token: String,
+        email: String,
+        name: String?,
+        avatar: String?,
+        isOnboardingCompleted: Boolean
+    ) {
         context.dataStore.edit { preferences ->
             preferences[ACCESS_TOKEN_KEY] = token
             preferences[USER_EMAIL_KEY] = email
             preferences[USER_NAME_KEY] = name ?: ""
             preferences[AVATAR_URL_KEY] = avatar ?: ""
             preferences[LAST_USED_EMAIL_KEY] = email
+            preferences[IS_ONBOARDING_COMPLETED_KEY] = isOnboardingCompleted
         }
     }
 

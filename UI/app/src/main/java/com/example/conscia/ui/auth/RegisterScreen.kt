@@ -18,7 +18,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun RegisterScreen(
-    onRegisterSuccess: () -> Unit,
+    onRegisterSuccess: (Boolean) -> Unit,
     onNavigateToLogin: () -> Unit,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
@@ -30,8 +30,9 @@ fun RegisterScreen(
     val authState by viewModel.authState.collectAsState()
 
     LaunchedEffect(authState) {
-        if (authState is AuthState.Success) {
-            onRegisterSuccess()
+        val success = authState as? AuthState.Success
+        if (success != null) {
+            onRegisterSuccess(success.isOnboardingCompleted)
         }
     }
 

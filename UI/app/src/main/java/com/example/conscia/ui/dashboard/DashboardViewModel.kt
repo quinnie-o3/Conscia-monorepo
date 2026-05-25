@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.conscia.data.TrackedAppsDataStore
+import com.example.conscia.data.remote.RemoteUsageSyncRepository
 import com.example.conscia.data.remote.api.ConsciaApiService
 import com.example.conscia.data.rule.RuleRepository
 import com.example.conscia.data.usage.UsagePermissionHelper
@@ -28,6 +29,7 @@ class DashboardViewModel @Inject constructor(
     private val getRulesUseCase: GetRulesUseCase,
     private val evaluateUseCase: EvaluateTrackedAppsUsageUseCase,
     private val ruleRepository: RuleRepository,
+    private val remoteUsageSyncRepository: RemoteUsageSyncRepository,
     private val apiService: ConsciaApiService,
     private val dataStore: TrackedAppsDataStore
 ) : ViewModel() {
@@ -83,6 +85,9 @@ class DashboardViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 ruleRepository.syncRulesFromServer()
+                runCatching {
+                    remoteUsageSyncRepository.syncRecentUsage(days = 1)
+                }
                 val todayUsage = getTodayUsageUseCase()
                 val allRules = getRulesUseCase().first()
                 val trackedPackages = allRules.filter { it.trackingEnabled }.map { it.packageName }.toSet()

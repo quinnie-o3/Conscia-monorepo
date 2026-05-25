@@ -40,7 +40,9 @@ import com.example.conscia.ui.settings.ManageIntentionsScreen
 import com.example.conscia.ui.settings.UserInformationScreen
 import com.example.conscia.ui.auth.LoginScreen
 import com.example.conscia.ui.auth.RegisterScreen
+import com.example.conscia.data.remote.RemoteUsageSyncRepository
 import com.example.conscia.data.rule.RuleRepository
+import com.example.conscia.data.remote.api.ConsciaApiService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -54,6 +56,12 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var ruleRepository: RuleRepository
 
+    @Inject
+    lateinit var apiService: ConsciaApiService
+
+    @Inject
+    lateinit var remoteUsageSyncRepository: RemoteUsageSyncRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -61,7 +69,12 @@ class MainActivity : ComponentActivity() {
             
             ConsciaAppTheme(darkTheme = isDarkModePref) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    AppNavigation(dataStore, ruleRepository)
+                    AppNavigation(
+                        dataStore,
+                        ruleRepository,
+                        apiService,
+                        remoteUsageSyncRepository
+                    )
                 }
             }
         }
@@ -69,7 +82,12 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepository) {
+fun AppNavigation(
+    dataStore: TrackedAppsDataStore,
+    ruleRepository: RuleRepository,
+    apiService: ConsciaApiService,
+    remoteUsageSyncRepository: RemoteUsageSyncRepository
+) {
     val scope = rememberCoroutineScope()
     val appPreferences by dataStore.appPreferencesFlow.collectAsState(initial = null)
     val isDarkMode by dataStore.isDarkModeFlow.collectAsState(initial = isSystemInDarkTheme())
@@ -140,8 +158,9 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
             // --- AUTH ---
             composable("login") { 
                 LoginScreen(
-                    onLoginSuccess = {
-                        navController.navigate(routeAfterAuth) {
+                    onLoginSuccess = { isOnboardingCompleted ->
+                        val targetRoute = if (isOnboardingCompleted) "dashboard" else "choose_apps"
+                        navController.navigate(targetRoute) {
                             popUpTo("login") { inclusive = true }
                             launchSingleTop = true
                         }
@@ -158,8 +177,9 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
             }
             composable("register") {
                 RegisterScreen(
-                    onRegisterSuccess = {
-                        navController.navigate(routeAfterAuth) {
+                    onRegisterSuccess = { isOnboardingCompleted ->
+                        val targetRoute = if (isOnboardingCompleted) "dashboard" else "choose_apps"
+                        navController.navigate(targetRoute) {
                             popUpTo("register") { inclusive = true }
                             launchSingleTop = true
                         }
@@ -181,7 +201,12 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
             }
             composable("permissions") { 
                 PermissionsRoute { 
-                    scope.launch { dataStore.setOnboardingCompleted(true) }
+                    scope.launch {
+                        dataStore.setOnboardingCompleted(true)
+                        runCatching {
+                            apiService.updateUserProfile(mapOf("isOnboardingCompleted" to true))
+                        }
+                    }
                     navController.navigate("dashboard") { popUpTo("onboarding") { inclusive = true } } 
                 } 
             }
@@ -256,6 +281,9 @@ fun AppNavigation(dataStore: TrackedAppsDataStore, ruleRepository: RuleRepositor
                             "user_info" -> navController.navigate("user_information")
                             "logout" -> {
                                 scope.launch {
+                                    runCatching {
+                                        remoteUsageSyncRepository.syncRecentUsage(days = 1)
+                                    }
                                     ruleRepository.deleteAllLocalRules()
                                     dataStore.clearAuth()
                                     navController.navigate("login") { popUpTo(0) { inclusive = true } }

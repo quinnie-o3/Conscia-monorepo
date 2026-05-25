@@ -31,7 +31,7 @@ import com.google.android.gms.common.api.ApiException
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: (Boolean) -> Unit,
     onNavigateToRegister: () -> Unit,
     onBackClick: () -> Unit,
     viewModel: AuthViewModel = hiltViewModel()
@@ -81,8 +81,9 @@ fun LoginScreen(
     }
 
     LaunchedEffect(authState) {
-        if (authState is AuthState.Success) {
-            onLoginSuccess()
+        val success = authState as? AuthState.Success
+        if (success != null) {
+            onLoginSuccess(success.isOnboardingCompleted)
         }
     }
 

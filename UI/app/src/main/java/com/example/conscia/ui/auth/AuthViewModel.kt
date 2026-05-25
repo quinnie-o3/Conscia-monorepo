@@ -11,6 +11,7 @@ import com.example.conscia.data.remote.dto.AuthResponse
 import com.example.conscia.data.remote.dto.GoogleLoginRequest
 import com.example.conscia.data.remote.dto.LoginRequest
 import com.example.conscia.data.remote.dto.RegisterRequest
+import com.example.conscia.data.remote.dto.UserData
 import com.example.conscia.data.rule.RuleRepository
 import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +23,10 @@ import javax.inject.Inject
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
-    data class Success(val userEmail: String) : AuthState()
+    data class Success(
+        val userEmail: String,
+        val isOnboardingCompleted: Boolean
+    ) : AuthState()
     data class Error(val message: String) : AuthState()
 }
 
@@ -132,29 +136,33 @@ class AuthViewModel @Inject constructor(
             ?: throw IllegalStateException("Auth response token is missing.")
         val email = data.user.email.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("Auth response user email is missing.")
+        val authOnboardingCompleted = data.user.isOnboardingCompleted
 
         ruleRepository.deleteAllLocalRules()
         dataStore.saveAuthToken(
             accessToken,
             email,
             data.user.displayName,
-            data.user.avatarUrl
+            data.user.avatarUrl,
+            authOnboardingCompleted
         )
 
-        refreshProfileAfterAuth()
+        val profile = refreshProfileAfterAuth()
+        val serverOnboardingCompleted =
+            profile?.isOnboardingCompleted ?: authOnboardingCompleted
+        val syncedRuleCount = ruleRepository.syncRulesFromServer()
+        val isOnboardingCompleted = serverOnboardingCompleted || syncedRuleCount > 0
 
-        _authState.value = AuthState.Success(email)
+        dataStore.setOnboardingCompleted(isOnboardingCompleted)
 
-        viewModelScope.launch {
-            try {
-                ruleRepository.syncRulesFromServer()
-            } catch (e: Exception) {
-                Log.e(TAG, "Rule sync after auth failed", e)
-            }
+        if (isOnboardingCompleted && !serverOnboardingCompleted) {
+            markOnboardingCompletedRemotely()
         }
+
+        _authState.value = AuthState.Success(email, isOnboardingCompleted)
     }
 
-    private suspend fun refreshProfileAfterAuth() {
+    private suspend fun refreshProfileAfterAuth(): UserData? {
         try {
             val response = apiService.getUserProfile()
             val profile = response.body()?.data
@@ -169,11 +177,22 @@ class AuthViewModel @Inject constructor(
                     profile.displayName.orEmpty(),
                     profile.avatarUrl.orEmpty()
                 )
+                return profile
             }
         } catch (e: IllegalStateException) {
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Profile refresh after auth failed", e)
+        }
+
+        return null
+    }
+
+    private suspend fun markOnboardingCompletedRemotely() {
+        try {
+            apiService.updateUserProfile(mapOf("isOnboardingCompleted" to true))
+        } catch (e: Exception) {
+            Log.e(TAG, "Unable to update remote onboarding status", e)
         }
     }
 

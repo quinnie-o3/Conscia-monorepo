@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
+import com.example.conscia.data.remote.RemoteUsageSyncRepository
 import com.example.conscia.data.rule.RuleRepository
 import com.example.conscia.data.usage.UsageStatsRepository
 import com.example.conscia.data.warning.WarningHistoryStore
@@ -43,6 +44,9 @@ class AccessibilityForegroundAppService : AccessibilityService() {
     @Inject
     lateinit var warningHistoryStore: WarningHistoryStore
 
+    @Inject
+    lateinit var remoteUsageSyncRepository: RemoteUsageSyncRepository
+
     private val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     private var promptPackageName: String? = null
     private var foregroundPackageName: String? = null
@@ -51,6 +55,8 @@ class AccessibilityForegroundAppService : AccessibilityService() {
     private var limitMonitorJob: Job? = null
     private var promptResolutionJob: Job? = null
     private var promptResolutionPackageName: String? = null
+    private var usageSyncJob: Job? = null
+    private var lastUsageSyncElapsed: Long = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
@@ -223,6 +229,9 @@ class AccessibilityForegroundAppService : AccessibilityService() {
 
     private fun startOrUpdateForegroundSession(packageName: String, usageStatsMillis: Long) {
         if (foregroundPackageName != packageName) {
+            if (foregroundPackageName != null) {
+                scheduleRecentUsageSync()
+            }
             foregroundPackageName = packageName
             foregroundSessionStartedAt = SystemClock.elapsedRealtime()
             foregroundSessionStartUsageMillis = usageStatsMillis
@@ -240,12 +249,28 @@ class AccessibilityForegroundAppService : AccessibilityService() {
         return maxOf(usageStatsMillis, foregroundSessionStartUsageMillis + elapsedMillis.coerceAtLeast(0L))
     }
 
-    private fun stopForegroundSession() {
+    private fun stopForegroundSession(forceUsageSync: Boolean = false) {
+        if (foregroundPackageName != null) {
+            scheduleRecentUsageSync(force = forceUsageSync)
+        }
         foregroundPackageName = null
         foregroundSessionStartedAt = 0L
         foregroundSessionStartUsageMillis = 0L
         limitMonitorJob?.cancel()
         limitMonitorJob = null
+    }
+
+    private fun scheduleRecentUsageSync(force: Boolean = false) {
+        val now = SystemClock.elapsedRealtime()
+        if (!force && now - lastUsageSyncElapsed < USAGE_SYNC_THROTTLE_MS) return
+        if (usageSyncJob?.isActive == true) return
+
+        lastUsageSyncElapsed = now
+        usageSyncJob = serviceScope.launch {
+            runCatching {
+                remoteUsageSyncRepository.syncRecentUsage(days = 1)
+            }
+        }
     }
 
     private fun startLimitMonitor(
@@ -264,6 +289,7 @@ class AccessibilityForegroundAppService : AccessibilityService() {
                     ?.totalTimeInForegroundMillis
                     ?: 0L
                 val currentUsageMillis = currentRealtimeUsageMillis(packageName, usageStatsMillis)
+                scheduleRecentUsageSync()
                 if (currentUsageMillis >= effectiveLimitMillis) {
                     withContext(Dispatchers.Main) {
                         handleLimitReached(
@@ -301,7 +327,7 @@ class AccessibilityForegroundAppService : AccessibilityService() {
             }
         }
         PurposeGateStore.clear(this)
-        stopForegroundSession()
+        stopForegroundSession(forceUsageSync = true)
         performGlobalAction(GLOBAL_ACTION_HOME)
         serviceScope.launch {
             delay(250L)
@@ -320,4 +346,8 @@ class AccessibilityForegroundAppService : AccessibilityService() {
     }
 
     override fun onInterrupt() = Unit
+
+    private companion object {
+        const val USAGE_SYNC_THROTTLE_MS = 30_000L
+    }
 }

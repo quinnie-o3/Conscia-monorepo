@@ -23,12 +23,18 @@ class RuleRepository @Inject constructor(
 
     suspend fun insertRule(rule: RuleEntity) {
         ruleDao.insertRule(rule)
+        addSelectedPackage(rule.packageName)
         syncRuleToRemoteIfAuthenticated(rule)
     }
 
     suspend fun updateRule(rule: RuleEntity) {
         val previousRule = ruleDao.getRuleById(rule.id)
         ruleDao.updateRule(rule)
+        if (previousRule != null && previousRule.packageName != rule.packageName) {
+            replaceSelectedPackage(previousRule.packageName, rule.packageName)
+        } else {
+            addSelectedPackage(rule.packageName)
+        }
         syncRuleToRemoteIfAuthenticated(rule)
         if (previousRule != null && previousRule.packageName != rule.packageName) {
             deleteRemoteRuleIfAuthenticated(previousRule.packageName)
@@ -37,11 +43,13 @@ class RuleRepository @Inject constructor(
 
     suspend fun deleteRule(rule: RuleEntity) {
         ruleDao.deleteRule(rule)
+        removeSelectedPackage(rule.packageName)
         deleteRemoteRuleIfAuthenticated(rule.packageName)
     }
 
     suspend fun deleteAllLocalRules() {
         ruleDao.deleteAllRules()
+        dataStore.saveSelectedPackages(emptySet())
     }
 
     private suspend fun syncRuleToRemoteIfAuthenticated(rule: RuleEntity) {
@@ -89,9 +97,9 @@ class RuleRepository @Inject constructor(
         }
     }
 
-    suspend fun syncRulesFromServer() {
-        val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: return
-        val accessToken = dataStore.accessTokenFlow.firstOrNull() ?: return
+    suspend fun syncRulesFromServer(): Int {
+        val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: return 0
+        if (dataStore.accessTokenFlow.firstOrNull() == null) return 0
 
         try {
             val response = apiService.getTrackingRules(deviceId)
@@ -113,10 +121,14 @@ class RuleRepository @Inject constructor(
                     )
                     ruleDao.insertRule(localRule)
                 }
+                dataStore.saveSelectedPackages(remoteRules.map { it.packageName }.toSet())
+                return remoteRules.size
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
+
+        return 0
     }
 
     suspend fun upsertRuleByPackage(rule: RuleEntity) {
@@ -132,5 +144,24 @@ class RuleRepository @Inject constructor(
                 )
             )
         }
+    }
+
+    private suspend fun addSelectedPackage(packageName: String) {
+        dataStore.saveSelectedPackages(
+            dataStore.selectedPackagesFlow.firstOrNull().orEmpty() + packageName
+        )
+    }
+
+    private suspend fun removeSelectedPackage(packageName: String) {
+        dataStore.saveSelectedPackages(
+            dataStore.selectedPackagesFlow.firstOrNull().orEmpty() - packageName
+        )
+    }
+
+    private suspend fun replaceSelectedPackage(oldPackageName: String, newPackageName: String) {
+        dataStore.saveSelectedPackages(
+            (dataStore.selectedPackagesFlow.firstOrNull().orEmpty() - oldPackageName) +
+                newPackageName
+        )
     }
 }

@@ -23,7 +23,9 @@ interface ConsciaApiService {
     suspend fun getUserProfile(): Response<ApiResponse<UserData>>
 
     @PATCH("users/profile")
-    suspend fun updateUserProfile(@Body request: Map<String, String>): Response<ApiResponse<UserData>>
+    suspend fun updateUserProfile(
+        @Body request: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<ApiResponse<UserData>>
 
     // --- Device ---
     @POST("devices/register")
