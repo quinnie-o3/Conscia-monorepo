@@ -74,6 +74,9 @@ class IntentionPromptActivity : ComponentActivity() {
                             onUseWithPurpose = {
                                 if (packageName.isNotBlank()) {
                                     PurposeGateStore.allowCurrentSession(this@IntentionPromptActivity, packageName)
+                                    openTargetApp(packageName)
+                                } else {
+                                    goHome()
                                 }
                                 finish()
                             },
@@ -95,6 +98,20 @@ class IntentionPromptActivity : ComponentActivity() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         startActivity(homeIntent)
+    }
+
+    private fun openTargetApp(packageName: String) {
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+        if (launchIntent == null) {
+            PurposeGateStore.clear(this)
+            goHome()
+            return
+        }
+
+        launchIntent.addFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+        )
+        startActivity(launchIntent)
     }
 
     companion object {

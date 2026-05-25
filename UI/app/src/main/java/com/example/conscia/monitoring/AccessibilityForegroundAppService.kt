@@ -103,13 +103,14 @@ class AccessibilityForegroundAppService : AccessibilityService() {
             withContext(Dispatchers.Main) {
                 startOrUpdateForegroundSession(packageName, usageStatsMillis)
                 val currentUsageMillis = currentRealtimeUsageMillis(packageName, usageStatsMillis)
-                if (currentUsageMillis >= effectiveLimitMillis && activeRule.warningEnabled) {
+                if (currentUsageMillis >= effectiveLimitMillis) {
                     promptPackageName = null
                     handleLimitReached(
                         packageName = activeRule.packageName,
                         appName = activeRule.appName,
                         usageMillis = currentUsageMillis,
-                        limitMillis = effectiveLimitMillis
+                        limitMillis = effectiveLimitMillis,
+                        shouldNotify = activeRule.warningEnabled
                     )
                 } else if (
                     !PurposeGateStore.isAllowedForCurrentSession(this@AccessibilityForegroundAppService, packageName) &&
@@ -132,7 +133,8 @@ class AccessibilityForegroundAppService : AccessibilityService() {
                     startLimitMonitor(
                         packageName = activeRule.packageName,
                         appName = activeRule.appName,
-                        effectiveLimitMillis = effectiveLimitMillis
+                        effectiveLimitMillis = effectiveLimitMillis,
+                        shouldNotify = activeRule.warningEnabled
                     )
                 }
             }
@@ -169,18 +171,20 @@ class AccessibilityForegroundAppService : AccessibilityService() {
                             promptPackageName = null
                             startOrUpdateForegroundSession(packageName, usageStatsMillis)
                             val currentUsageMillis = currentRealtimeUsageMillis(packageName, usageStatsMillis)
-                            if (currentUsageMillis >= effectiveLimitMillis && activeRule.warningEnabled) {
+                            if (currentUsageMillis >= effectiveLimitMillis) {
                                 handleLimitReached(
                                     packageName = activeRule.packageName,
                                     appName = activeRule.appName,
                                     usageMillis = currentUsageMillis,
-                                    limitMillis = effectiveLimitMillis
+                                    limitMillis = effectiveLimitMillis,
+                                    shouldNotify = activeRule.warningEnabled
                                 )
-                            } else if (activeRule.warningEnabled) {
+                            } else {
                                 startLimitMonitor(
                                     packageName = activeRule.packageName,
                                     appName = activeRule.appName,
-                                    effectiveLimitMillis = effectiveLimitMillis
+                                    effectiveLimitMillis = effectiveLimitMillis,
+                                    shouldNotify = activeRule.warningEnabled
                                 )
                             }
                         }
@@ -244,7 +248,12 @@ class AccessibilityForegroundAppService : AccessibilityService() {
         limitMonitorJob = null
     }
 
-    private fun startLimitMonitor(packageName: String, appName: String, effectiveLimitMillis: Long) {
+    private fun startLimitMonitor(
+        packageName: String,
+        appName: String,
+        effectiveLimitMillis: Long,
+        shouldNotify: Boolean
+    ) {
         if (limitMonitorJob?.isActive == true) return
         limitMonitorJob = serviceScope.launch {
             while (isActive && foregroundPackageName == packageName) {
@@ -261,7 +270,8 @@ class AccessibilityForegroundAppService : AccessibilityService() {
                             packageName = packageName,
                             appName = appName,
                             usageMillis = currentUsageMillis,
-                            limitMillis = effectiveLimitMillis
+                            limitMillis = effectiveLimitMillis,
+                            shouldNotify = shouldNotify
                         )
                     }
                     break
@@ -274,22 +284,31 @@ class AccessibilityForegroundAppService : AccessibilityService() {
         packageName: String,
         appName: String,
         usageMillis: Long,
-        limitMillis: Long
+        limitMillis: Long,
+        shouldNotify: Boolean
     ) {
-        serviceScope.launch {
-            if (!warningHistoryStore.wasExceededWarningSentToday(packageName)) {
-                notificationManager.showExceededNotification(
-                    appName = appName,
-                    usageStr = TimeFormatters.formatDurationShort(usageMillis),
-                    limitStr = TimeFormatters.formatDurationShort(limitMillis),
-                    packageName = packageName
-                )
-                warningHistoryStore.markExceededWarningSent(packageName)
+        if (shouldNotify) {
+            serviceScope.launch {
+                if (!warningHistoryStore.wasExceededWarningSentToday(packageName)) {
+                    notificationManager.showExceededNotification(
+                        appName = appName,
+                        usageStr = TimeFormatters.formatDurationShort(usageMillis),
+                        limitStr = TimeFormatters.formatDurationShort(limitMillis),
+                        packageName = packageName
+                    )
+                    warningHistoryStore.markExceededWarningSent(packageName)
+                }
             }
         }
         PurposeGateStore.clear(this)
         stopForegroundSession()
-        launchLimitWarning(appName)
+        performGlobalAction(GLOBAL_ACTION_HOME)
+        serviceScope.launch {
+            delay(250L)
+            withContext(Dispatchers.Main) {
+                launchLimitWarning(appName)
+            }
+        }
     }
 
     private fun launchLimitWarning(appName: String) {
