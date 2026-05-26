@@ -209,8 +209,8 @@ private fun InsightsContent(
                                     verticalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
                                     InsightMetric(
-                                        label = "Rules usage",
-                                        value = TimeFormatters.formatDurationShort(uiState.purposefulUsageMillis),
+                                        label = "Total usage",
+                                        value = TimeFormatters.formatDurationShort(uiState.totalUsageMillis),
                                         valueColor = colorScheme.primary
                                     )
                                     HorizontalDivider(color = colorScheme.outlineVariant)

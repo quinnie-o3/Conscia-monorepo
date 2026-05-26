@@ -8,7 +8,6 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
-    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" tools:ignore="ProtectedPermissions" />
 
     <queries>
         <intent>
@@ -18,19 +17,19 @@
     </queries>
 
     <application
+        android:name=".ConsciaApplication"
         android:allowBackup="true"
         android:icon="@drawable/logo"
         android:roundIcon="@drawable/logo"
         android:label="Conscia"
         android:supportsRtl="true"
         android:theme="@style/Theme.Conscia"
-        android:usesCleartextTraffic="true"
-        android:name=".ConsciaApplication">
+        android:usesCleartextTraffic="true">
 
         <activity
+            android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.Conscia"
-            android:name=".MainActivity">
+            android:theme="@style/Theme.Conscia">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -38,24 +37,24 @@
         </activity>
 
         <activity
+            android:name="com.example.conscia.presentation.intervention.IntentionPromptActivity"
             android:theme="@style/Theme.Conscia"
             android:launchMode="singleTop"
             android:excludeFromRecents="true"
-            android:exported="false"
-            android:name=".presentation.intervention.IntentionPromptActivity" />
+            android:exported="false" />
 
         <activity
+            android:name="com.example.conscia.presentation.warning.UsageLimitWarningActivity"
             android:theme="@style/Theme.Conscia"
             android:launchMode="singleTop"
             android:excludeFromRecents="true"
             android:exported="false"
-            android:noHistory="true"
-            android:name=".presentation.warning.UsageLimitWarningActivity" />
+            android:noHistory="true" />
 
         <service
+            android:name=".monitoring.AccessibilityForegroundAppService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:exported="false"
-            android:name=".monitoring.AccessibilityForegroundAppService">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>

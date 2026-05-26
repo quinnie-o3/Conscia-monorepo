@@ -15,7 +15,10 @@ import javax.inject.Inject
 data class ProfileUiState(
     val user: UserData? = null,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val isSaving: Boolean = false,
+    val errorMessage: String? = null,
+    val successMessage: String? = null,
+    val isResetFormVisible: Boolean = false
 )
 
 @HiltViewModel
@@ -44,5 +47,47 @@ class ProfileViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
             }
         }
+    }
+
+    fun toggleResetForm() {
+        _uiState.update { it.copy(isResetFormVisible = !it.isResetFormVisible, errorMessage = null, successMessage = null) }
+    }
+
+    fun updatePassword(oldPass: String, newPass: String, confirmPass: String) {
+        if (newPass != confirmPass) {
+            _uiState.update { it.copy(errorMessage = "New passwords do not match") }
+            return
+        }
+        
+        if (oldPass.isBlank() || newPass.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Passwords cannot be empty") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true, errorMessage = null, successMessage = null) }
+            try {
+                val response = apiService.updateUserProfile(mapOf(
+                    "oldPassword" to oldPass,
+                    "password" to newPass
+                ))
+                if (response.isSuccessful && response.body()?.success == true) {
+                    _uiState.update { it.copy(
+                        isSaving = false, 
+                        successMessage = "Password updated successfully",
+                        isResetFormVisible = false
+                    ) }
+                } else {
+                    val errorMsg = response.body()?.message ?: "Failed to update password"
+                    _uiState.update { it.copy(isSaving = false, errorMessage = errorMsg) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isSaving = false, errorMessage = e.message) }
+            }
+        }
+    }
+    
+    fun clearMessages() {
+        _uiState.update { it.copy(errorMessage = null, successMessage = null) }
     }
 }

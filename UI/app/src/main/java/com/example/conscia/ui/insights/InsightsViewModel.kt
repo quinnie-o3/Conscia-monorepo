@@ -119,29 +119,31 @@ class InsightsViewModel @Inject constructor(
                     rangeEndMillis = range.endMillis
                 )
 
-                val totalUsageMillis = remoteInsights.summary.totalSeconds * 1000L
-                val purposefulUsageMillis = remoteInsights.summary.trackedSeconds * 1000L
-                val otherUsageMillis = remoteInsights.summary.otherSeconds * 1000L
-                val averageDailyUsageMillis = remoteInsights.summary.averageDailySeconds * 1000L
                 val trackedRules = ruleRepository.allRules.first().filter { it.trackingEnabled }
                 val rulesByPackage = trackedRules.associateBy { it.packageName }
-                val usageRankings = if (remoteInsights.apps.isNotEmpty()) {
-                    buildAppUsageRankings(
-                        usages = remoteInsights.apps.map { app ->
-                            RawAppUsage(
-                                packageName = app.packageName,
-                                appName = app.appName,
-                                usageMillis = app.totalDurationSeconds * 1000L
-                            )
-                        },
-                        rulesByPackage = rulesByPackage
-                    )
+                val sourceUsages = if (remoteInsights.apps.isNotEmpty()) {
+                    remoteInsights.apps.map { app ->
+                        RawAppUsage(
+                            packageName = app.packageName,
+                            appName = app.appName,
+                            usageMillis = app.totalDurationSeconds * 1000L
+                        )
+                    }
                 } else {
-                    buildAppUsageRankings(
-                        usages = loadLocalUsageDurations(range),
-                        rulesByPackage = rulesByPackage
-                    )
+                    loadLocalUsageDurations(range)
                 }
+                val usageRankings = buildAppUsageRankings(
+                    usages = sourceUsages,
+                    rulesByPackage = rulesByPackage
+                )
+                val metrics = buildUsageMetrics(
+                    rankings = usageRankings,
+                    trackedPackages = rulesByPackage.keys,
+                    dayCount = range.dayCount
+                )
+                val topTrackedApp = usageRankings
+                    .filter { it.packageName in rulesByPackage }
+                    .maxByOrNull { it.usageMillis }
 
                 _uiState.update {
                     it.copy(
@@ -149,19 +151,19 @@ class InsightsViewModel @Inject constructor(
                         isLoading = false,
                         errorMessage = null,
                         dateRangeLabel = range.label,
-                        totalUsageMillis = totalUsageMillis,
-                        purposefulUsageMillis = purposefulUsageMillis,
-                        otherUsageMillis = otherUsageMillis,
-                        averageDailyUsageMillis = averageDailyUsageMillis,
-                        purposefulPercent = remoteInsights.summary.purposefulPercentage.roundToInt(),
-                        trackedAppsCount = remoteInsights.summary.trackedAppsCount,
+                        totalUsageMillis = metrics.totalUsageMillis,
+                        purposefulUsageMillis = metrics.purposefulUsageMillis,
+                        otherUsageMillis = metrics.otherUsageMillis,
+                        averageDailyUsageMillis = metrics.averageDailyUsageMillis,
+                        purposefulPercent = metrics.purposefulPercent,
+                        trackedAppsCount = trackedRules.size,
                         appUsageRankings = usageRankings,
                         reflectionText = buildReflection(
-                            totalUsageMillis = totalUsageMillis,
-                            purposefulUsageMillis = purposefulUsageMillis,
-                            trackedAppsCount = remoteInsights.summary.trackedAppsCount,
-                            topTrackedAppName = remoteInsights.topTrackedApp?.appName,
-                            topTrackedAppUsageMillis = remoteInsights.topTrackedApp?.totalDurationSeconds?.times(1000L)
+                            totalUsageMillis = metrics.totalUsageMillis,
+                            purposefulUsageMillis = metrics.purposefulUsageMillis,
+                            trackedAppsCount = trackedRules.size,
+                            topTrackedAppName = topTrackedApp?.appName,
+                            topTrackedAppUsageMillis = topTrackedApp?.usageMillis
                         ),
                         lastUpdatedLabel = timeFormatter.format(Date())
                     )
@@ -192,20 +194,24 @@ class InsightsViewModel @Inject constructor(
         val trackedPackages = trackedRules.map { it.packageName }.toSet()
         val rulesByPackage = trackedRules.associateBy { it.packageName }
 
-        val totalUsageMillis = usage.sumOf { it.totalTimeInForegroundMillis }
-        val purposefulUsage = usage
+        val usageRankings = buildAppUsageRankings(
+            usages = usage.map { app ->
+                RawAppUsage(
+                    packageName = app.packageName,
+                    appName = app.appName,
+                    usageMillis = app.totalTimeInForegroundMillis
+                )
+            },
+            rulesByPackage = rulesByPackage
+        )
+        val metrics = buildUsageMetrics(
+            rankings = usageRankings,
+            trackedPackages = trackedPackages,
+            dayCount = range.dayCount
+        )
+        val topTrackedApp = usageRankings
             .filter { it.packageName in trackedPackages }
-            .sumOf { it.totalTimeInForegroundMillis }
-        val otherUsage = (totalUsageMillis - purposefulUsage).coerceAtLeast(0L)
-        val purposefulPercent = if (totalUsageMillis > 0) {
-            (purposefulUsage.toDouble() * 100.0 / totalUsageMillis.toDouble()).roundToInt()
-        } else {
-            0
-        }
-        val averageDailyUsage = totalUsageMillis / 7
-        val topTrackedApp = usage
-            .filter { it.packageName in trackedPackages }
-            .maxByOrNull { it.totalTimeInForegroundMillis }
+            .maxByOrNull { it.usageMillis }
 
         _uiState.update {
             it.copy(
@@ -213,28 +219,19 @@ class InsightsViewModel @Inject constructor(
                 isLoading = false,
                 errorMessage = fallbackMessage,
                 dateRangeLabel = range.label,
-                totalUsageMillis = totalUsageMillis,
-                purposefulUsageMillis = purposefulUsage,
-                otherUsageMillis = otherUsage,
-                averageDailyUsageMillis = averageDailyUsage,
-                purposefulPercent = purposefulPercent,
+                totalUsageMillis = metrics.totalUsageMillis,
+                purposefulUsageMillis = metrics.purposefulUsageMillis,
+                otherUsageMillis = metrics.otherUsageMillis,
+                averageDailyUsageMillis = metrics.averageDailyUsageMillis,
+                purposefulPercent = metrics.purposefulPercent,
                 trackedAppsCount = trackedPackages.size,
-                appUsageRankings = buildAppUsageRankings(
-                    usages = usage.map { app ->
-                        RawAppUsage(
-                            packageName = app.packageName,
-                            appName = app.appName,
-                            usageMillis = app.totalTimeInForegroundMillis
-                        )
-                    },
-                    rulesByPackage = rulesByPackage
-                ),
+                appUsageRankings = usageRankings,
                 reflectionText = buildReflection(
-                    totalUsageMillis = totalUsageMillis,
-                    purposefulUsageMillis = purposefulUsage,
+                    totalUsageMillis = metrics.totalUsageMillis,
+                    purposefulUsageMillis = metrics.purposefulUsageMillis,
                     trackedAppsCount = trackedPackages.size,
                     topTrackedAppName = topTrackedApp?.appName,
-                    topTrackedAppUsageMillis = topTrackedApp?.totalTimeInForegroundMillis
+                    topTrackedAppUsageMillis = topTrackedApp?.usageMillis
                 ),
                 lastUpdatedLabel = timeFormatter.format(Date())
             )
@@ -300,6 +297,31 @@ class InsightsViewModel @Inject constructor(
             .forEach { (index, _) -> wholeShares[index] += 1 }
 
         return wholeShares
+    }
+
+    private fun buildUsageMetrics(
+        rankings: List<AppUsageRanking>,
+        trackedPackages: Set<String>,
+        dayCount: Int
+    ): UsageMetrics {
+        val totalUsageMillis = rankings.sumOf { it.usageMillis }
+        val purposefulUsageMillis = rankings
+            .filter { it.packageName in trackedPackages }
+            .sumOf { it.usageMillis }
+        val otherUsageMillis = (totalUsageMillis - purposefulUsageMillis).coerceAtLeast(0L)
+        val purposefulPercent = if (totalUsageMillis > 0L) {
+            (purposefulUsageMillis.toDouble() * 100.0 / totalUsageMillis.toDouble()).roundToInt()
+        } else {
+            0
+        }
+
+        return UsageMetrics(
+            totalUsageMillis = totalUsageMillis,
+            purposefulUsageMillis = purposefulUsageMillis,
+            otherUsageMillis = otherUsageMillis,
+            averageDailyUsageMillis = if (dayCount > 0) totalUsageMillis / dayCount else 0L,
+            purposefulPercent = purposefulPercent
+        )
     }
 
     private fun buildReflection(
@@ -377,13 +399,22 @@ class InsightsViewModel @Inject constructor(
     private data class SevenDayRange(
         val startMillis: Long,
         val endMillis: Long,
-        val label: String
+        val label: String,
+        val dayCount: Int = 7
     )
 
     private data class RawAppUsage(
         val packageName: String,
         val appName: String,
         val usageMillis: Long
+    )
+
+    private data class UsageMetrics(
+        val totalUsageMillis: Long,
+        val purposefulUsageMillis: Long,
+        val otherUsageMillis: Long,
+        val averageDailyUsageMillis: Long,
+        val purposefulPercent: Int
     )
 
     companion object {
