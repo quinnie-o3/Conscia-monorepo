@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.conscia.ConsciaAppTheme
 import com.example.conscia.monitoring.PurposeGateStore
+import com.example.conscia.notification.ConsciaNotificationManager
 
 class IntentionPromptActivity : ComponentActivity() {
 
@@ -45,6 +46,9 @@ class IntentionPromptActivity : ComponentActivity() {
         val intentionLabel = intent.getStringExtra(EXTRA_INTENTION_LABEL)
             ?.takeIf { it.isNotBlank() }
             ?: "the intention you set"
+        if (packageName.isNotBlank()) {
+            ConsciaNotificationManager(this).cancelIntentionPromptNotification(packageName)
+        }
 
         setContent {
             ConsciaAppTheme {

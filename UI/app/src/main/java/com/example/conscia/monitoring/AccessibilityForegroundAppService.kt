@@ -136,8 +136,15 @@ class AccessibilityForegroundAppService : AccessibilityService() {
                                 ruleId = activeRule.id,
                                 intentionLabel = activeRule.intentionLabel
                             )
+                            notificationManager.showIntentionPromptNotification(
+                                packageName = activeRule.packageName,
+                                appName = activeRule.appName,
+                                ruleId = activeRule.id,
+                                intentionLabel = activeRule.intentionLabel
+                            )
                         }
                     } else {
+                        notificationManager.cancelIntentionPromptNotification(packageName)
                         promptPackageName = null
                     }
                 }
@@ -174,6 +181,7 @@ class AccessibilityForegroundAppService : AccessibilityService() {
 
                         withContext(Dispatchers.Main) {
                             promptPackageName = null
+                            notificationManager.cancelIntentionPromptNotification(packageName)
                             startOrUpdateForegroundSession(packageName, usageStatsMillis)
                             val currentUsageMillis = currentRealtimeUsageMillis(packageName, usageStatsMillis)
                             if (isBlockedForToday || currentUsageMillis >= effectiveLimitMillis) {
