@@ -76,13 +76,14 @@ export class TrackingRuleService {
         upsert: true,
         new: true,
       },
-    );
+    ).exec();
   }
 
   async findAllForUser(userId: string, deviceId: string) {
     return this.trackingRuleModel
       .find({ userId }) // Rules follow user, but we might still want to filter by device if needed
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
   async deleteOneForUser(
@@ -90,19 +91,23 @@ export class TrackingRuleService {
     deviceId: string,
     packageName: string,
   ) {
-    return this.trackingRuleModel.deleteOne({
-      userId,
-      packageName,
-    });
+    return this.trackingRuleModel
+      .deleteOne({
+        userId,
+        packageName,
+      })
+      .exec();
   }
 
   async findActiveRules(
     anonymousUserId: string | undefined,
     deviceId: string,
   ) {
-    return this.trackingRuleModel.find({
-      ...this.buildAnonymousIdentityFilter(anonymousUserId, deviceId),
-      trackingEnabled: true,
-    });
+    return this.trackingRuleModel
+      .find({
+        ...this.buildAnonymousIdentityFilter(anonymousUserId, deviceId),
+        trackingEnabled: true,
+      })
+      .exec();
   }
 }

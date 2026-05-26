@@ -32,7 +32,9 @@ data class TrackingRule(
     val warningEnabled: Boolean,
     val extensionMinutes: Int? = 0,
     val extensionCount: Int? = 0,
-    val lastExtensionDate: String? = ""
+    val lastExtensionDate: String? = "",
+    val createdAt: String? = null,
+    val updatedAt: String? = null
 )
 
 data class TrackingRuleRequest(

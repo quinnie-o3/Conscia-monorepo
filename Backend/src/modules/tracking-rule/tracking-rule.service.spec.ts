@@ -29,7 +29,7 @@ describe('TrackingRuleService', () => {
   });
 
   it('uses the user and resolved anonymous identity in rule upserts', async () => {
-    findOneAndUpdate.mockResolvedValue({});
+    findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue({}) });
 
     await service.upsert('user-1', {
       appName: 'YouTube',
@@ -71,7 +71,7 @@ describe('TrackingRuleService', () => {
   });
 
   it('filters active rules by anonymousUserId when one is provided', async () => {
-    find.mockResolvedValue([]);
+    find.mockReturnValue({ exec: jest.fn().mockResolvedValue([]) });
 
     await service.findActiveRules('anon-1', 'device-1');
 

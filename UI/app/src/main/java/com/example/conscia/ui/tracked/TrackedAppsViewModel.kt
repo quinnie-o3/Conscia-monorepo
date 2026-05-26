@@ -204,19 +204,25 @@ class TrackedAppDetailViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            val updatedRule = rule.copy(
-                dailyLimitMinutes = totalMinutes,
-                updatedAt = System.currentTimeMillis()
-            )
-            ruleRepository.updateRule(updatedRule)
-            _uiState.update {
-                it.copy(
-                    rule = updatedRule,
-                    isEditingLimit = false,
-                    limitHours = (totalMinutes / 60).toString(),
-                    limitMinutes = (totalMinutes % 60).toString(),
-                    errorMessage = null
+            try {
+                val updatedRule = rule.copy(
+                    dailyLimitMinutes = totalMinutes,
+                    updatedAt = System.currentTimeMillis()
                 )
+                ruleRepository.updateRule(updatedRule)
+                _uiState.update {
+                    it.copy(
+                        rule = updatedRule,
+                        isEditingLimit = false,
+                        limitHours = (totalMinutes / 60).toString(),
+                        limitMinutes = (totalMinutes % 60).toString(),
+                        errorMessage = null
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = e.message ?: "Failed to save limit.")
+                }
             }
         }
     }
@@ -232,18 +238,24 @@ class TrackedAppDetailViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            val updatedRule = rule.copy(
-                intentionLabel = reason,
-                updatedAt = System.currentTimeMillis()
-            )
-            ruleRepository.updateRule(updatedRule)
-            _uiState.update {
-                it.copy(
-                    rule = updatedRule,
-                    isEditingReason = false,
-                    reason = reason,
-                    errorMessage = null
+            try {
+                val updatedRule = rule.copy(
+                    intentionLabel = reason,
+                    updatedAt = System.currentTimeMillis()
                 )
+                ruleRepository.updateRule(updatedRule)
+                _uiState.update {
+                    it.copy(
+                        rule = updatedRule,
+                        isEditingReason = false,
+                        reason = reason,
+                        errorMessage = null
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = e.message ?: "Failed to save reason.")
+                }
             }
         }
     }
@@ -251,8 +263,14 @@ class TrackedAppDetailViewModel @Inject constructor(
     fun deleteRule(onDeleted: () -> Unit) {
         val rule = _uiState.value.rule ?: return
         viewModelScope.launch {
-            deleteRuleUseCase(rule)
-            onDeleted()
+            try {
+                deleteRuleUseCase(rule)
+                onDeleted()
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = e.message ?: "Failed to delete rule.")
+                }
+            }
         }
     }
 }
