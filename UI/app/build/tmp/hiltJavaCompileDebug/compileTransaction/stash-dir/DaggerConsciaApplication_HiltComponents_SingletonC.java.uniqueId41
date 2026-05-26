@@ -455,6 +455,8 @@ public final class DaggerConsciaApplication_HiltComponents_SingletonC {
     private MainActivity injectMainActivity2(MainActivity instance) {
       MainActivity_MembersInjector.injectDataStore(instance, singletonCImpl.provideTrackedAppsDataStoreProvider.get());
       MainActivity_MembersInjector.injectRuleRepository(instance, singletonCImpl.ruleRepositoryProvider.get());
+      MainActivity_MembersInjector.injectApiService(instance, singletonCImpl.provideConsciaApiServiceProvider.get());
+      MainActivity_MembersInjector.injectRemoteUsageSyncRepository(instance, singletonCImpl.remoteUsageSyncRepositoryProvider.get());
       return instance;
     }
 
@@ -462,58 +464,58 @@ public final class DaggerConsciaApplication_HiltComponents_SingletonC {
     private static final class LazyClassKeyProvider {
       static String com_example_conscia_ui_onboarding_ChooseAppsViewModel = "com.example.conscia.ui.onboarding.ChooseAppsViewModel";
 
+      static String com_example_conscia_ui_dashboard_DashboardViewModel = "com.example.conscia.ui.dashboard.DashboardViewModel";
+
+      static String com_example_conscia_ui_tracked_TrackedAppsViewModel = "com.example.conscia.ui.tracked.TrackedAppsViewModel";
+
+      static String com_example_conscia_ui_auth_AuthViewModel = "com.example.conscia.ui.auth.AuthViewModel";
+
+      static String com_example_conscia_ui_settings_ProfileViewModel = "com.example.conscia.ui.settings.ProfileViewModel";
+
+      static String com_example_conscia_ui_insights_InsightsViewModel = "com.example.conscia.ui.insights.InsightsViewModel";
+
+      static String com_example_conscia_ui_onboarding_StarterRulesViewModel = "com.example.conscia.ui.onboarding.StarterRulesViewModel";
+
+      static String com_example_conscia_ui_tracked_TrackedAppDetailViewModel = "com.example.conscia.ui.tracked.TrackedAppDetailViewModel";
+
+      static String com_example_conscia_ui_intention_SessionHistoryViewModel = "com.example.conscia.ui.intention.SessionHistoryViewModel";
+
       static String com_example_conscia_ui_rules_CreateEditRuleViewModel = "com.example.conscia.ui.rules.CreateEditRuleViewModel";
 
       static String com_example_conscia_ui_settings_ManageIntentionsViewModel = "com.example.conscia.ui.settings.ManageIntentionsViewModel";
 
-      static String com_example_conscia_ui_tracked_TrackedAppDetailViewModel = "com.example.conscia.ui.tracked.TrackedAppDetailViewModel";
-
-      static String com_example_conscia_ui_auth_AuthViewModel = "com.example.conscia.ui.auth.AuthViewModel";
-
-      static String com_example_conscia_ui_insights_InsightsViewModel = "com.example.conscia.ui.insights.InsightsViewModel";
-
-      static String com_example_conscia_ui_settings_ProfileViewModel = "com.example.conscia.ui.settings.ProfileViewModel";
-
-      static String com_example_conscia_ui_intention_SessionHistoryViewModel = "com.example.conscia.ui.intention.SessionHistoryViewModel";
-
-      static String com_example_conscia_ui_dashboard_DashboardViewModel = "com.example.conscia.ui.dashboard.DashboardViewModel";
-
-      static String com_example_conscia_ui_onboarding_StarterRulesViewModel = "com.example.conscia.ui.onboarding.StarterRulesViewModel";
-
-      static String com_example_conscia_ui_tracked_TrackedAppsViewModel = "com.example.conscia.ui.tracked.TrackedAppsViewModel";
-
       @KeepFieldType
       ChooseAppsViewModel com_example_conscia_ui_onboarding_ChooseAppsViewModel2;
+
+      @KeepFieldType
+      DashboardViewModel com_example_conscia_ui_dashboard_DashboardViewModel2;
+
+      @KeepFieldType
+      TrackedAppsViewModel com_example_conscia_ui_tracked_TrackedAppsViewModel2;
+
+      @KeepFieldType
+      AuthViewModel com_example_conscia_ui_auth_AuthViewModel2;
+
+      @KeepFieldType
+      ProfileViewModel com_example_conscia_ui_settings_ProfileViewModel2;
+
+      @KeepFieldType
+      InsightsViewModel com_example_conscia_ui_insights_InsightsViewModel2;
+
+      @KeepFieldType
+      StarterRulesViewModel com_example_conscia_ui_onboarding_StarterRulesViewModel2;
+
+      @KeepFieldType
+      TrackedAppDetailViewModel com_example_conscia_ui_tracked_TrackedAppDetailViewModel2;
+
+      @KeepFieldType
+      SessionHistoryViewModel com_example_conscia_ui_intention_SessionHistoryViewModel2;
 
       @KeepFieldType
       CreateEditRuleViewModel com_example_conscia_ui_rules_CreateEditRuleViewModel2;
 
       @KeepFieldType
       ManageIntentionsViewModel com_example_conscia_ui_settings_ManageIntentionsViewModel2;
-
-      @KeepFieldType
-      TrackedAppDetailViewModel com_example_conscia_ui_tracked_TrackedAppDetailViewModel2;
-
-      @KeepFieldType
-      AuthViewModel com_example_conscia_ui_auth_AuthViewModel2;
-
-      @KeepFieldType
-      InsightsViewModel com_example_conscia_ui_insights_InsightsViewModel2;
-
-      @KeepFieldType
-      ProfileViewModel com_example_conscia_ui_settings_ProfileViewModel2;
-
-      @KeepFieldType
-      SessionHistoryViewModel com_example_conscia_ui_intention_SessionHistoryViewModel2;
-
-      @KeepFieldType
-      DashboardViewModel com_example_conscia_ui_dashboard_DashboardViewModel2;
-
-      @KeepFieldType
-      StarterRulesViewModel com_example_conscia_ui_onboarding_StarterRulesViewModel2;
-
-      @KeepFieldType
-      TrackedAppsViewModel com_example_conscia_ui_tracked_TrackedAppsViewModel2;
     }
   }
 
@@ -608,60 +610,60 @@ public final class DaggerConsciaApplication_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
-      static String com_example_conscia_ui_tracked_TrackedAppDetailViewModel = "com.example.conscia.ui.tracked.TrackedAppDetailViewModel";
-
-      static String com_example_conscia_ui_onboarding_StarterRulesViewModel = "com.example.conscia.ui.onboarding.StarterRulesViewModel";
+      static String com_example_conscia_ui_rules_CreateEditRuleViewModel = "com.example.conscia.ui.rules.CreateEditRuleViewModel";
 
       static String com_example_conscia_ui_dashboard_DashboardViewModel = "com.example.conscia.ui.dashboard.DashboardViewModel";
 
-      static String com_example_conscia_ui_intention_SessionHistoryViewModel = "com.example.conscia.ui.intention.SessionHistoryViewModel";
-
-      static String com_example_conscia_ui_auth_AuthViewModel = "com.example.conscia.ui.auth.AuthViewModel";
-
-      static String com_example_conscia_ui_insights_InsightsViewModel = "com.example.conscia.ui.insights.InsightsViewModel";
-
-      static String com_example_conscia_ui_settings_ProfileViewModel = "com.example.conscia.ui.settings.ProfileViewModel";
-
-      static String com_example_conscia_ui_tracked_TrackedAppsViewModel = "com.example.conscia.ui.tracked.TrackedAppsViewModel";
-
       static String com_example_conscia_ui_onboarding_ChooseAppsViewModel = "com.example.conscia.ui.onboarding.ChooseAppsViewModel";
 
-      static String com_example_conscia_ui_rules_CreateEditRuleViewModel = "com.example.conscia.ui.rules.CreateEditRuleViewModel";
+      static String com_example_conscia_ui_intention_SessionHistoryViewModel = "com.example.conscia.ui.intention.SessionHistoryViewModel";
 
       static String com_example_conscia_ui_settings_ManageIntentionsViewModel = "com.example.conscia.ui.settings.ManageIntentionsViewModel";
 
-      @KeepFieldType
-      TrackedAppDetailViewModel com_example_conscia_ui_tracked_TrackedAppDetailViewModel2;
+      static String com_example_conscia_ui_onboarding_StarterRulesViewModel = "com.example.conscia.ui.onboarding.StarterRulesViewModel";
 
-      @KeepFieldType
-      StarterRulesViewModel com_example_conscia_ui_onboarding_StarterRulesViewModel2;
+      static String com_example_conscia_ui_settings_ProfileViewModel = "com.example.conscia.ui.settings.ProfileViewModel";
 
-      @KeepFieldType
-      DashboardViewModel com_example_conscia_ui_dashboard_DashboardViewModel2;
+      static String com_example_conscia_ui_tracked_TrackedAppDetailViewModel = "com.example.conscia.ui.tracked.TrackedAppDetailViewModel";
 
-      @KeepFieldType
-      SessionHistoryViewModel com_example_conscia_ui_intention_SessionHistoryViewModel2;
+      static String com_example_conscia_ui_auth_AuthViewModel = "com.example.conscia.ui.auth.AuthViewModel";
 
-      @KeepFieldType
-      AuthViewModel com_example_conscia_ui_auth_AuthViewModel2;
+      static String com_example_conscia_ui_tracked_TrackedAppsViewModel = "com.example.conscia.ui.tracked.TrackedAppsViewModel";
 
-      @KeepFieldType
-      InsightsViewModel com_example_conscia_ui_insights_InsightsViewModel2;
-
-      @KeepFieldType
-      ProfileViewModel com_example_conscia_ui_settings_ProfileViewModel2;
-
-      @KeepFieldType
-      TrackedAppsViewModel com_example_conscia_ui_tracked_TrackedAppsViewModel2;
-
-      @KeepFieldType
-      ChooseAppsViewModel com_example_conscia_ui_onboarding_ChooseAppsViewModel2;
+      static String com_example_conscia_ui_insights_InsightsViewModel = "com.example.conscia.ui.insights.InsightsViewModel";
 
       @KeepFieldType
       CreateEditRuleViewModel com_example_conscia_ui_rules_CreateEditRuleViewModel2;
 
       @KeepFieldType
+      DashboardViewModel com_example_conscia_ui_dashboard_DashboardViewModel2;
+
+      @KeepFieldType
+      ChooseAppsViewModel com_example_conscia_ui_onboarding_ChooseAppsViewModel2;
+
+      @KeepFieldType
+      SessionHistoryViewModel com_example_conscia_ui_intention_SessionHistoryViewModel2;
+
+      @KeepFieldType
       ManageIntentionsViewModel com_example_conscia_ui_settings_ManageIntentionsViewModel2;
+
+      @KeepFieldType
+      StarterRulesViewModel com_example_conscia_ui_onboarding_StarterRulesViewModel2;
+
+      @KeepFieldType
+      ProfileViewModel com_example_conscia_ui_settings_ProfileViewModel2;
+
+      @KeepFieldType
+      TrackedAppDetailViewModel com_example_conscia_ui_tracked_TrackedAppDetailViewModel2;
+
+      @KeepFieldType
+      AuthViewModel com_example_conscia_ui_auth_AuthViewModel2;
+
+      @KeepFieldType
+      TrackedAppsViewModel com_example_conscia_ui_tracked_TrackedAppsViewModel2;
+
+      @KeepFieldType
+      InsightsViewModel com_example_conscia_ui_insights_InsightsViewModel2;
     }
 
     private static final class SwitchingProvider<T> implements Provider<T> {
@@ -695,7 +697,7 @@ public final class DaggerConsciaApplication_HiltComponents_SingletonC {
           return (T) new CreateEditRuleViewModel(viewModelCImpl.getRuleByIdUseCase(), viewModelCImpl.upsertRuleUseCase(), viewModelCImpl.deleteRuleUseCase(), singletonCImpl.ruleRepositoryProvider.get(), singletonCImpl.provideConsciaApiServiceProvider.get());
 
           case 3: // com.example.conscia.ui.dashboard.DashboardViewModel 
-          return (T) new DashboardViewModel(ApplicationContextModule_ProvideApplicationFactory.provideApplication(singletonCImpl.applicationContextModule), viewModelCImpl.getTodayUsageUseCase(), viewModelCImpl.getWeeklyUsageUseCase(), viewModelCImpl.getRulesUseCase(), new EvaluateTrackedAppsUsageUseCase(), singletonCImpl.ruleRepositoryProvider.get(), singletonCImpl.provideConsciaApiServiceProvider.get(), singletonCImpl.provideTrackedAppsDataStoreProvider.get());
+          return (T) new DashboardViewModel(ApplicationContextModule_ProvideApplicationFactory.provideApplication(singletonCImpl.applicationContextModule), viewModelCImpl.getTodayUsageUseCase(), viewModelCImpl.getWeeklyUsageUseCase(), viewModelCImpl.getRulesUseCase(), new EvaluateTrackedAppsUsageUseCase(), singletonCImpl.ruleRepositoryProvider.get(), singletonCImpl.remoteUsageSyncRepositoryProvider.get(), singletonCImpl.provideConsciaApiServiceProvider.get(), singletonCImpl.provideTrackedAppsDataStoreProvider.get());
 
           case 4: // com.example.conscia.ui.insights.InsightsViewModel 
           return (T) new InsightsViewModel(ApplicationContextModule_ProvideApplicationFactory.provideApplication(singletonCImpl.applicationContextModule), singletonCImpl.usageStatsRepositoryProvider.get(), singletonCImpl.ruleRepositoryProvider.get(), singletonCImpl.remoteUsageSyncRepositoryProvider.get());
@@ -805,6 +807,7 @@ public final class DaggerConsciaApplication_HiltComponents_SingletonC {
       AccessibilityForegroundAppService_MembersInjector.injectUsageRepository(instance, singletonCImpl.usageStatsRepositoryProvider.get());
       AccessibilityForegroundAppService_MembersInjector.injectNotificationManager(instance, singletonCImpl.consciaNotificationManagerProvider.get());
       AccessibilityForegroundAppService_MembersInjector.injectWarningHistoryStore(instance, singletonCImpl.warningHistoryStoreProvider.get());
+      AccessibilityForegroundAppService_MembersInjector.injectRemoteUsageSyncRepository(instance, singletonCImpl.remoteUsageSyncRepositoryProvider.get());
       return instance;
     }
   }

@@ -2,6 +2,7 @@ package com.example.conscia.ui.dashboard;
 
 import android.app.Application;
 import com.example.conscia.data.TrackedAppsDataStore;
+import com.example.conscia.data.remote.RemoteUsageSyncRepository;
 import com.example.conscia.data.remote.api.ConsciaApiService;
 import com.example.conscia.data.rule.RuleRepository;
 import com.example.conscia.domain.usecase.EvaluateTrackedAppsUsageUseCase;
@@ -42,6 +43,8 @@ public final class DashboardViewModel_Factory implements Factory<DashboardViewMo
 
   private final Provider<RuleRepository> ruleRepositoryProvider;
 
+  private final Provider<RemoteUsageSyncRepository> remoteUsageSyncRepositoryProvider;
+
   private final Provider<ConsciaApiService> apiServiceProvider;
 
   private final Provider<TrackedAppsDataStore> dataStoreProvider;
@@ -52,6 +55,7 @@ public final class DashboardViewModel_Factory implements Factory<DashboardViewMo
       Provider<GetRulesUseCase> getRulesUseCaseProvider,
       Provider<EvaluateTrackedAppsUsageUseCase> evaluateUseCaseProvider,
       Provider<RuleRepository> ruleRepositoryProvider,
+      Provider<RemoteUsageSyncRepository> remoteUsageSyncRepositoryProvider,
       Provider<ConsciaApiService> apiServiceProvider,
       Provider<TrackedAppsDataStore> dataStoreProvider) {
     this.applicationProvider = applicationProvider;
@@ -60,13 +64,14 @@ public final class DashboardViewModel_Factory implements Factory<DashboardViewMo
     this.getRulesUseCaseProvider = getRulesUseCaseProvider;
     this.evaluateUseCaseProvider = evaluateUseCaseProvider;
     this.ruleRepositoryProvider = ruleRepositoryProvider;
+    this.remoteUsageSyncRepositoryProvider = remoteUsageSyncRepositoryProvider;
     this.apiServiceProvider = apiServiceProvider;
     this.dataStoreProvider = dataStoreProvider;
   }
 
   @Override
   public DashboardViewModel get() {
-    return newInstance(applicationProvider.get(), getTodayUsageUseCaseProvider.get(), getWeeklyUsageUseCaseProvider.get(), getRulesUseCaseProvider.get(), evaluateUseCaseProvider.get(), ruleRepositoryProvider.get(), apiServiceProvider.get(), dataStoreProvider.get());
+    return newInstance(applicationProvider.get(), getTodayUsageUseCaseProvider.get(), getWeeklyUsageUseCaseProvider.get(), getRulesUseCaseProvider.get(), evaluateUseCaseProvider.get(), ruleRepositoryProvider.get(), remoteUsageSyncRepositoryProvider.get(), apiServiceProvider.get(), dataStoreProvider.get());
   }
 
   public static DashboardViewModel_Factory create(Provider<Application> applicationProvider,
@@ -75,15 +80,17 @@ public final class DashboardViewModel_Factory implements Factory<DashboardViewMo
       Provider<GetRulesUseCase> getRulesUseCaseProvider,
       Provider<EvaluateTrackedAppsUsageUseCase> evaluateUseCaseProvider,
       Provider<RuleRepository> ruleRepositoryProvider,
+      Provider<RemoteUsageSyncRepository> remoteUsageSyncRepositoryProvider,
       Provider<ConsciaApiService> apiServiceProvider,
       Provider<TrackedAppsDataStore> dataStoreProvider) {
-    return new DashboardViewModel_Factory(applicationProvider, getTodayUsageUseCaseProvider, getWeeklyUsageUseCaseProvider, getRulesUseCaseProvider, evaluateUseCaseProvider, ruleRepositoryProvider, apiServiceProvider, dataStoreProvider);
+    return new DashboardViewModel_Factory(applicationProvider, getTodayUsageUseCaseProvider, getWeeklyUsageUseCaseProvider, getRulesUseCaseProvider, evaluateUseCaseProvider, ruleRepositoryProvider, remoteUsageSyncRepositoryProvider, apiServiceProvider, dataStoreProvider);
   }
 
   public static DashboardViewModel newInstance(Application application,
       GetTodayUsageUseCase getTodayUsageUseCase, GetWeeklyUsageUseCase getWeeklyUsageUseCase,
       GetRulesUseCase getRulesUseCase, EvaluateTrackedAppsUsageUseCase evaluateUseCase,
-      RuleRepository ruleRepository, ConsciaApiService apiService, TrackedAppsDataStore dataStore) {
-    return new DashboardViewModel(application, getTodayUsageUseCase, getWeeklyUsageUseCase, getRulesUseCase, evaluateUseCase, ruleRepository, apiService, dataStore);
+      RuleRepository ruleRepository, RemoteUsageSyncRepository remoteUsageSyncRepository,
+      ConsciaApiService apiService, TrackedAppsDataStore dataStore) {
+    return new DashboardViewModel(application, getTodayUsageUseCase, getWeeklyUsageUseCase, getRulesUseCase, evaluateUseCase, ruleRepository, remoteUsageSyncRepository, apiService, dataStore);
   }
 }

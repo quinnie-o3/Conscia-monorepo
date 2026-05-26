@@ -36,8 +36,19 @@ import com.example.conscia.ConsciaAppTheme
 class UsageLimitWarningActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        renderWarning(intent)
+    }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        renderWarning(intent)
+    }
+
+    private fun renderWarning(intent: Intent) {
         val appName = intent.getStringExtra(EXTRA_APP_NAME) ?: "This app"
+        val usageText = intent.getStringExtra(EXTRA_USAGE_TEXT).orEmpty()
+        val limitText = intent.getStringExtra(EXTRA_LIMIT_TEXT).orEmpty()
 
         setContent {
             ConsciaAppTheme {
@@ -55,6 +66,8 @@ class UsageLimitWarningActivity : ComponentActivity() {
                     ) {
                         WarningCard(
                             appName = appName,
+                            usageText = usageText,
+                            limitText = limitText,
                             onOkClick = {
                                 goHome()
                                 finish()
@@ -82,7 +95,18 @@ class UsageLimitWarningActivity : ComponentActivity() {
 }
 
 @Composable
-private fun WarningCard(appName: String, onOkClick: () -> Unit) {
+private fun WarningCard(
+    appName: String,
+    usageText: String,
+    limitText: String,
+    onOkClick: () -> Unit
+) {
+    val detailText = if (usageText.isNotBlank() && limitText.isNotBlank()) {
+        "$appName has reached $usageText today, over the $limitText limit. Open Conscia if you want to extend this rule."
+    } else {
+        "You reached the limit for $appName today. Open Conscia if you want to extend this rule."
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth(0.85f)
@@ -107,7 +131,7 @@ private fun WarningCard(appName: String, onOkClick: () -> Unit) {
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = "You reached the limit for $appName today. Open Conscia if you want to extend this rule.",
+                text = detailText,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
                 color = Color(0xFF881337),

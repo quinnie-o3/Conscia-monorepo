@@ -45,12 +45,6 @@ class IntentionPromptActivity : ComponentActivity() {
         val intentionLabel = intent.getStringExtra(EXTRA_INTENTION_LABEL)
             ?.takeIf { it.isNotBlank() }
             ?: "the intention you set"
-        val otherIntentionLabels = intent
-            .getStringArrayListExtra(EXTRA_OTHER_INTENTION_LABELS)
-            .orEmpty()
-            .filter { it.isNotBlank() && it != intentionLabel }
-            .distinct()
-            .take(3)
 
         setContent {
             ConsciaAppTheme {
@@ -70,7 +64,6 @@ class IntentionPromptActivity : ComponentActivity() {
                         PurposeGateCard(
                             appName = appName,
                             intentionLabel = intentionLabel,
-                            otherIntentionLabels = otherIntentionLabels,
                             onUseWithPurpose = {
                                 if (packageName.isNotBlank()) {
                                     PurposeGateStore.allowCurrentSession(this@IntentionPromptActivity, packageName)
@@ -119,7 +112,6 @@ class IntentionPromptActivity : ComponentActivity() {
         const val EXTRA_APP_NAME = "EXTRA_APP_NAME"
         const val EXTRA_RULE_ID = "EXTRA_RULE_ID"
         const val EXTRA_INTENTION_LABEL = "EXTRA_INTENTION_LABEL"
-        const val EXTRA_OTHER_INTENTION_LABELS = "EXTRA_OTHER_INTENTION_LABELS"
     }
 }
 
@@ -127,7 +119,6 @@ class IntentionPromptActivity : ComponentActivity() {
 private fun PurposeGateCard(
     appName: String,
     intentionLabel: String,
-    otherIntentionLabels: List<String>,
     onUseWithPurpose: () -> Unit,
     onWrongPurpose: () -> Unit
 ) {
@@ -181,25 +172,6 @@ private fun PurposeGateCard(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-
-            otherIntentionLabels.forEach { label ->
-                OutlinedButton(
-                    onClick = onWrongPurpose,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text(
-                        text = label,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-            }
 
             OutlinedButton(
                 onClick = onWrongPurpose,

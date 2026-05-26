@@ -118,30 +118,27 @@ class AccessibilityForegroundAppService : AccessibilityService() {
                         limitMillis = effectiveLimitMillis,
                         shouldNotify = activeRule.warningEnabled
                     )
-                } else if (
-                    !PurposeGateStore.isAllowedForCurrentSession(this@AccessibilityForegroundAppService, packageName) &&
-                    promptPackageName != packageName
-                ) {
-                    promptPackageName = packageName
-                    launchIntentionPrompt(
-                        packageName = activeRule.packageName,
-                        appName = activeRule.appName,
-                        ruleId = activeRule.id,
-                        intentionLabel = activeRule.intentionLabel,
-                        otherIntentionLabels = rules
-                            .map { it.intentionLabel }
-                            .filter { it.isNotBlank() && it != activeRule.intentionLabel }
-                            .distinct()
-                            .take(3)
-                    )
-                } else if (PurposeGateStore.isAllowedForCurrentSession(this@AccessibilityForegroundAppService, packageName)) {
-                    promptPackageName = null
+                } else {
                     startLimitMonitor(
                         packageName = activeRule.packageName,
                         appName = activeRule.appName,
                         effectiveLimitMillis = effectiveLimitMillis,
                         shouldNotify = activeRule.warningEnabled
                     )
+
+                    if (!PurposeGateStore.isAllowedForCurrentSession(this@AccessibilityForegroundAppService, packageName)) {
+                        if (promptPackageName != packageName) {
+                            promptPackageName = packageName
+                            launchIntentionPrompt(
+                                packageName = activeRule.packageName,
+                                appName = activeRule.appName,
+                                ruleId = activeRule.id,
+                                intentionLabel = activeRule.intentionLabel
+                            )
+                        }
+                    } else {
+                        promptPackageName = null
+                    }
                 }
             }
         }
@@ -210,8 +207,7 @@ class AccessibilityForegroundAppService : AccessibilityService() {
         packageName: String,
         appName: String,
         ruleId: Long,
-        intentionLabel: String,
-        otherIntentionLabels: List<String>
+        intentionLabel: String
     ) {
         val intent = Intent(this, IntentionPromptActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -219,10 +215,6 @@ class AccessibilityForegroundAppService : AccessibilityService() {
             putExtra(IntentionPromptActivity.EXTRA_APP_NAME, appName)
             putExtra(IntentionPromptActivity.EXTRA_RULE_ID, ruleId)
             putExtra(IntentionPromptActivity.EXTRA_INTENTION_LABEL, intentionLabel)
-            putStringArrayListExtra(
-                IntentionPromptActivity.EXTRA_OTHER_INTENTION_LABELS,
-                ArrayList(otherIntentionLabels)
-            )
         }
         startActivity(intent)
     }
@@ -327,20 +319,25 @@ class AccessibilityForegroundAppService : AccessibilityService() {
             }
         }
         PurposeGateStore.clear(this)
+        promptPackageName = null
+        launchLimitWarning(
+            appName = appName,
+            usageText = TimeFormatters.formatDurationShort(usageMillis),
+            limitText = TimeFormatters.formatDurationShort(limitMillis)
+        )
         stopForegroundSession(forceUsageSync = true)
-        performGlobalAction(GLOBAL_ACTION_HOME)
-        serviceScope.launch {
-            delay(250L)
-            withContext(Dispatchers.Main) {
-                launchLimitWarning(appName)
-            }
-        }
     }
 
-    private fun launchLimitWarning(appName: String) {
+    private fun launchLimitWarning(appName: String, usageText: String, limitText: String) {
         val intent = Intent(this, UsageLimitWarningActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+            )
             putExtra(UsageLimitWarningActivity.EXTRA_APP_NAME, appName)
+            putExtra(UsageLimitWarningActivity.EXTRA_USAGE_TEXT, usageText)
+            putExtra(UsageLimitWarningActivity.EXTRA_LIMIT_TEXT, limitText)
         }
         startActivity(intent)
     }

@@ -213,65 +213,65 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Acer\.gradle\cache
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.13.1] C:\Users\Acer\.gradle\caches\8.10.2\transforms\51193562a8b5a563f2514c2f95949981\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:25:9-35
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:24:9-35
 	android:label
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:24:9-32
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:23:9-32
 	android:roundIcon
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:23:9-43
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:22:9-43
 	android:icon
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:22:9-38
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:21:9-38
 	android:allowBackup
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:21:9-35
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:20:9-35
 	android:theme
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:26:9-45
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:25:9-45
 	android:usesCleartextTraffic
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:27:9-44
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:26:9-44
 	android:name
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:20:9-62
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:27:9-43
 activity#com.example.conscia.MainActivity
 ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:29:9-37:20
 	android:exported
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:31:13-36
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:30:13-36
 	android:theme
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:32:13-49
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:31:13-49
 	android:name
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:30:13-60
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:32:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
 ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:33:13-36:29
 activity#com.example.conscia.presentation.intervention.IntentionPromptActivity
-ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:39:9-44:40
+ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:39:9-44:81
 	android:excludeFromRecents
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:43:13-46
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:42:13-46
 	android:launchMode
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:42:13-43
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:41:13-43
 	android:exported
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:44:13-37
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:43:13-37
 	android:theme
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:41:13-49
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:40:13-49
 	android:name
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:40:13-97
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:44:13-78
 activity#com.example.conscia.presentation.warning.UsageLimitWarningActivity
-ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:46:9-52:40
+ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:46:9-52:78
 	android:excludeFromRecents
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:50:13-46
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:49:13-46
 	android:launchMode
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:49:13-43
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:48:13-43
 	android:noHistory
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:52:13-37
-	android:exported
 		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:51:13-37
+	android:exported
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:50:13-37
 	android:theme
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:48:13-49
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:47:13-49
 	android:name
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:47:13-94
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:52:13-75
 service#com.example.conscia.monitoring.AccessibilityForegroundAppService
 ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:54:9-64:19
 	android:exported
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:57:13-37
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:56:13-37
 	android:permission
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:56:13-79
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:55:13-79
 	android:name
-		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:55:13-92
+		ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:57:13-73
 intent-filter#action:name:android.accessibilityservice.AccessibilityService
 ADDED from D:\ARGGGG\CONSCIA - MOBILE APP\UI\app\src\main\AndroidManifest.xml:58:13-60:29
 action#android.accessibilityservice.AccessibilityService
