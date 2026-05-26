@@ -50,6 +50,14 @@ fun UserInformationScreen(
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
 
+    LaunchedEffect(uiState.isResetFormVisible) {
+        if (!uiState.isResetFormVisible) {
+            oldPassword = ""
+            newPassword = ""
+            confirmPassword = ""
+        }
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -143,9 +151,9 @@ fun UserInformationScreen(
 
                 // Password Display (Masked with ****)
                 OutlinedTextField(
-                    value = "password123", // Dummy value to show masking
+                    value = "********",
                     onValueChange = {},
-                    label = { Text("Current Password") },
+                    label = { Text("Password") },
                     leadingIcon = { Icon(Icons.Default.Lock, null) },
                     modifier = Modifier.fillMaxWidth(),
                     readOnly = true,
@@ -164,7 +172,8 @@ fun UserInformationScreen(
                 // Reset Password Toggle Button
                 TextButton(
                     onClick = { viewModel.toggleResetForm() },
-                    modifier = Modifier.align(Alignment.Start)
+                    modifier = Modifier.align(Alignment.Start),
+                    enabled = !uiState.isSaving
                 ) {
                     Text(
                         text = if (uiState.isResetFormVisible) "Hide Reset Form" else "Reset Password",
@@ -255,7 +264,11 @@ fun UserInformationScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(28.dp),
-                    enabled = !uiState.isSaving && (!uiState.isResetFormVisible || (oldPassword.isNotBlank() && newPassword.isNotBlank() && confirmPassword.isNotBlank())),
+                    enabled = uiState.isResetFormVisible &&
+                        !uiState.isSaving &&
+                        oldPassword.isNotBlank() &&
+                        newPassword.isNotBlank() &&
+                        confirmPassword.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     if (uiState.isSaving) {

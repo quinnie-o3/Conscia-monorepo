@@ -40,4 +40,14 @@ class WarningHistoryStore @Inject constructor(@ApplicationContext private val co
         val key = longPreferencesKey("near_${packageName}_${getTodayDateKey()}")
         context.warningDataStore.edit { it[key] = System.currentTimeMillis() }
     }
+
+    suspend fun isBlockedForToday(packageName: String): Boolean {
+        val key = longPreferencesKey("blocked_${packageName}_${getTodayDateKey()}")
+        return context.warningDataStore.data.map { it[key] != null }.first()
+    }
+
+    suspend fun markBlockedForToday(packageName: String) {
+        val key = longPreferencesKey("blocked_${packageName}_${getTodayDateKey()}")
+        context.warningDataStore.edit { it[key] = System.currentTimeMillis() }
+    }
 }

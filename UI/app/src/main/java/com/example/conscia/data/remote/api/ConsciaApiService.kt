@@ -27,6 +27,11 @@ interface ConsciaApiService {
         @Body request: Map<String, @JvmSuppressWildcards Any?>
     ): Response<ApiResponse<UserData>>
 
+    @PATCH("users/password")
+    suspend fun changePassword(
+        @Body request: ChangePasswordRequest
+    ): Response<ApiResponse<UserData>>
+
     // --- Device ---
     @POST("devices/register")
     suspend fun registerDevice(@Body request: DeviceRegisterRequest): Response<ApiResponse<DeviceData>>

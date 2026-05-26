@@ -2,8 +2,12 @@ package com.example.conscia.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.conscia.data.TrackedAppsDataStore
 import com.example.conscia.data.remote.api.ConsciaApiService
+import com.example.conscia.data.remote.dto.ApiResponse
+import com.example.conscia.data.remote.dto.ChangePasswordRequest
 import com.example.conscia.data.remote.dto.UserData
+import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +27,8 @@ data class ProfileUiState(
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val apiService: ConsciaApiService
+    private val apiService: ConsciaApiService,
+    private val dataStore: TrackedAppsDataStore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -38,13 +43,29 @@ class ProfileViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 val response = apiService.getUserProfile()
-                if (response.isSuccessful && response.body()?.success == true) {
-                    _uiState.update { it.copy(user = response.body()?.data, isLoading = false) }
+                val body = response.body()
+                val user = body?.data
+
+                if (response.isSuccessful && body?.success == true && user != null) {
+                    dataStore.updateUserInfo(
+                        user.displayName.orEmpty(),
+                        user.avatarUrl.orEmpty()
+                    )
+                    _uiState.update {
+                        it.copy(user = user, isLoading = false, errorMessage = null)
+                    }
                 } else {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to load profile") }
+                    _uiState.update {
+                        it.copy(isLoading = false, errorMessage = parseErrorMessage(response))
+                    }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "Unable to load profile"
+                    )
+                }
             }
         }
     }
@@ -64,26 +85,66 @@ class ProfileViewModel @Inject constructor(
             return
         }
 
+        if (newPass.length < 8) {
+            _uiState.update { it.copy(errorMessage = "New password must be at least 8 characters") }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null, successMessage = null) }
             try {
-                val response = apiService.updateUserProfile(mapOf(
-                    "oldPassword" to oldPass,
-                    "password" to newPass
-                ))
-                if (response.isSuccessful && response.body()?.success == true) {
+                val response = apiService.changePassword(
+                    ChangePasswordRequest(
+                        currentPassword = oldPass,
+                        newPassword = newPass
+                    )
+                )
+                val body = response.body()
+                val user = body?.data
+
+                if (response.isSuccessful && body?.success == true) {
+                    if (user != null) {
+                        dataStore.updateUserInfo(
+                            user.displayName.orEmpty(),
+                            user.avatarUrl.orEmpty()
+                        )
+                    }
                     _uiState.update { it.copy(
-                        isSaving = false, 
+                        user = user ?: it.user,
+                        isSaving = false,
                         successMessage = "Password updated successfully",
                         isResetFormVisible = false
                     ) }
                 } else {
-                    val errorMsg = response.body()?.message ?: "Failed to update password"
+                    val errorMsg = parseErrorMessage(response)
                     _uiState.update { it.copy(isSaving = false, errorMessage = errorMsg) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isSaving = false, errorMessage = e.message) }
+                _uiState.update {
+                    it.copy(
+                        isSaving = false,
+                        errorMessage = e.message ?: "Unable to update password"
+                    )
+                }
             }
+        }
+    }
+
+    private fun parseErrorMessage(response: retrofit2.Response<*>): String {
+        return try {
+            val errorBody = response.errorBody()?.string()
+            if (errorBody.isNullOrBlank()) {
+                return response.body()?.let { body ->
+                    (body as? ApiResponse<*>)?.message
+                } ?: "An error occurred (Code: ${response.code()})"
+            }
+
+            val apiResponse = Gson().fromJson(errorBody, ApiResponse::class.java)
+            apiResponse.message
+                ?: apiResponse.error
+                ?: "An error occurred (Code: ${response.code()})"
+        } catch (e: Exception) {
+            "An error occurred (Code: ${response.code()})"
         }
     }
     

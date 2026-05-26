@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -71,9 +72,15 @@ export class UserService {
     };
   }
 
-  async findById(id: string) {
+  async findById(id: string, includePassword = false) {
     this.assertValidUserId(id);
-    return this.userModel.findById(id).exec();
+    const query = this.userModel.findById(id);
+
+    if (includePassword) {
+      query.select('+password');
+    }
+
+    return query.exec();
   }
 
   async findByEmail(email: string, includePassword = false) {
@@ -133,6 +140,38 @@ export class UserService {
         { new: true },
       )
       .exec();
+  }
+
+  async updatePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+
+    const user = await this.findById(userId, true);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.password) {
+      throw new BadRequestException('This account does not have a password');
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    user.password = await bcrypt.hash(newPassword, this.saltRounds);
+    return user.save();
   }
 
   async createGoogleUser(profile: GoogleProfileData) {

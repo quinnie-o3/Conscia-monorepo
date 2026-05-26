@@ -58,7 +58,7 @@ class UsageLimitWarningActivity : ComponentActivity() {
                 }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFFFFE4E6)
+                    color = Color(0x99000000)
                 ) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -102,9 +102,9 @@ private fun WarningCard(
     onOkClick: () -> Unit
 ) {
     val detailText = if (usageText.isNotBlank() && limitText.isNotBlank()) {
-        "$appName has reached $usageText today, over the $limitText limit. Open Conscia if you want to extend this rule."
+        "$appName has reached $usageText today, over the $limitText limit. Conscia will keep this app blocked until tomorrow."
     } else {
-        "You reached the limit for $appName today. Open Conscia if you want to extend this rule."
+        "You reached the limit for $appName today. Conscia will keep this app blocked until tomorrow."
     }
 
     Card(
@@ -112,33 +112,34 @@ private fun WarningCard(
             .fillMaxWidth(0.85f)
             .wrapContentHeight(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF1F2)),
-        border = BorderStroke(3.dp, Color(0xFFE11D48))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Column(
-            modifier = Modifier.padding(32.dp),
+            modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Limit Reached!",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFFBE123C),
+                text = "Daily limit reached",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = detailText,
-                fontSize = 16.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 lineHeight = 24.sp,
-                color = Color(0xFF881337),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = onOkClick,
@@ -146,9 +147,9 @@ private fun WarningCard(
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE11D48))
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("OK", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                Text("Back to Home", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             }
         }
     }

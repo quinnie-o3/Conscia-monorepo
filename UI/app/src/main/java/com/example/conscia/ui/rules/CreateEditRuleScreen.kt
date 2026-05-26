@@ -194,7 +194,7 @@ fun CreateEditRuleScreen(
                 onClick = { showLimitPicker = true }
             )
             if (limitError) {
-                Text("Minimum tracking limit is 00:15. Minutes must be between 00 and 59.", color = Color.Red, style = MaterialTheme.typography.bodySmall)
+                Text("Minimum tracking limit is 00:01. Minutes must be between 00 and 59.", color = Color.Red, style = MaterialTheme.typography.bodySmall)
             }
 
             // 4. Options

@@ -105,11 +105,12 @@ class AccessibilityForegroundAppService : AccessibilityService() {
             val extensionMins = if (activeRule.lastExtensionDate == today) activeRule.extensionMinutes else 0
             val effectiveLimitMinutes = activeRule.dailyLimitMinutes + extensionMins
             val effectiveLimitMillis = effectiveLimitMinutes.toLong() * 60 * 1000
+            val isBlockedForToday = warningHistoryStore.isBlockedForToday(packageName)
 
             withContext(Dispatchers.Main) {
                 startOrUpdateForegroundSession(packageName, usageStatsMillis)
                 val currentUsageMillis = currentRealtimeUsageMillis(packageName, usageStatsMillis)
-                if (currentUsageMillis >= effectiveLimitMillis) {
+                if (isBlockedForToday || currentUsageMillis >= effectiveLimitMillis) {
                     promptPackageName = null
                     handleLimitReached(
                         packageName = activeRule.packageName,
@@ -169,12 +170,13 @@ class AccessibilityForegroundAppService : AccessibilityService() {
                             0
                         }
                         val effectiveLimitMillis = (activeRule.dailyLimitMinutes + extensionMins).toLong() * 60 * 1000
+                        val isBlockedForToday = warningHistoryStore.isBlockedForToday(packageName)
 
                         withContext(Dispatchers.Main) {
                             promptPackageName = null
                             startOrUpdateForegroundSession(packageName, usageStatsMillis)
                             val currentUsageMillis = currentRealtimeUsageMillis(packageName, usageStatsMillis)
-                            if (currentUsageMillis >= effectiveLimitMillis) {
+                            if (isBlockedForToday || currentUsageMillis >= effectiveLimitMillis) {
                                 handleLimitReached(
                                     packageName = activeRule.packageName,
                                     appName = activeRule.appName,
@@ -282,7 +284,8 @@ class AccessibilityForegroundAppService : AccessibilityService() {
                     ?: 0L
                 val currentUsageMillis = currentRealtimeUsageMillis(packageName, usageStatsMillis)
                 scheduleRecentUsageSync()
-                if (currentUsageMillis >= effectiveLimitMillis) {
+                val isBlockedForToday = warningHistoryStore.isBlockedForToday(packageName)
+                if (isBlockedForToday || currentUsageMillis >= effectiveLimitMillis) {
                     withContext(Dispatchers.Main) {
                         handleLimitReached(
                             packageName = packageName,
@@ -305,8 +308,9 @@ class AccessibilityForegroundAppService : AccessibilityService() {
         limitMillis: Long,
         shouldNotify: Boolean
     ) {
-        if (shouldNotify) {
-            serviceScope.launch {
+        serviceScope.launch {
+            warningHistoryStore.markBlockedForToday(packageName)
+            if (shouldNotify) {
                 if (!warningHistoryStore.wasExceededWarningSentToday(packageName)) {
                     notificationManager.showExceededNotification(
                         appName = appName,
@@ -318,24 +322,24 @@ class AccessibilityForegroundAppService : AccessibilityService() {
                 }
             }
         }
+
         PurposeGateStore.clear(this)
         promptPackageName = null
         stopForegroundSession(forceUsageSync = true)
 
         val usageText = TimeFormatters.formatDurationShort(usageMillis)
         val limitText = TimeFormatters.formatDurationShort(limitMillis)
-        performGlobalAction(GLOBAL_ACTION_HOME)
-        serviceScope.launch(Dispatchers.Main) {
-            delay(250L)
-            launchLimitWarning(
-                appName = appName,
-                usageText = usageText,
-                limitText = limitText
-            )
+        val warningLaunched = launchLimitWarning(
+            appName = appName,
+            usageText = usageText,
+            limitText = limitText
+        )
+        if (!warningLaunched) {
+            performGlobalAction(GLOBAL_ACTION_HOME)
         }
     }
 
-    private fun launchLimitWarning(appName: String, usageText: String, limitText: String) {
+    private fun launchLimitWarning(appName: String, usageText: String, limitText: String): Boolean {
         val intent = Intent(this, UsageLimitWarningActivity::class.java).apply {
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
@@ -346,7 +350,9 @@ class AccessibilityForegroundAppService : AccessibilityService() {
             putExtra(UsageLimitWarningActivity.EXTRA_USAGE_TEXT, usageText)
             putExtra(UsageLimitWarningActivity.EXTRA_LIMIT_TEXT, limitText)
         }
-        startActivity(intent)
+        return runCatching {
+            startActivity(intent)
+        }.isSuccess
     }
 
     override fun onInterrupt() = Unit

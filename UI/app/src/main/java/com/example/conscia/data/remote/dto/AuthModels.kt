@@ -23,6 +23,11 @@ data class ResetPasswordRequest(
     val newPassword: String
 )
 
+data class ChangePasswordRequest(
+    val currentPassword: String,
+    val newPassword: String
+)
+
 data class AuthResponse(
     val accessToken: String,
     val user: UserData

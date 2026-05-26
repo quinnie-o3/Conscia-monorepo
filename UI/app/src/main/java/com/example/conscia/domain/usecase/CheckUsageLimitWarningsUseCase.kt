@@ -18,7 +18,7 @@ class CheckUsageLimitWarningsUseCase @Inject constructor(
 ) {
     suspend fun execute() {
         val rules = ruleRepository.allRules.first()
-        val activeRules = rules.filter { it.trackingEnabled && it.warningEnabled }
+        val activeRules = rules.filter { it.trackingEnabled }
         if (activeRules.isEmpty()) return
 
         val todayUsage = usageRepository.getTodayUsage()
@@ -32,13 +32,15 @@ class CheckUsageLimitWarningsUseCase @Inject constructor(
 
             when (info.status) {
                 UsageLimitStatus.EXCEEDED -> {
-                    if (!warningHistoryStore.wasExceededWarningSentToday(packageName)) {
+                    warningHistoryStore.markBlockedForToday(packageName)
+                    if (info.warningEnabled && !warningHistoryStore.wasExceededWarningSentToday(packageName)) {
                         notificationManager.showExceededNotification(appName, usageStr, limitStr, packageName)
                         warningHistoryStore.markExceededWarningSent(packageName)
                     }
                 }
                 UsageLimitStatus.NEAR_LIMIT -> {
-                    if (!warningHistoryStore.wasNearLimitWarningSentToday(packageName) && 
+                    if (info.warningEnabled &&
+                        !warningHistoryStore.wasNearLimitWarningSentToday(packageName) &&
                         !warningHistoryStore.wasExceededWarningSentToday(packageName)) {
                         notificationManager.showNearLimitNotification(appName, usageStr, limitStr, packageName)
                         warningHistoryStore.markNearLimitWarningSent(packageName)

@@ -24,7 +24,8 @@
         android:label="Conscia"
         android:supportsRtl="true"
         android:theme="@style/Theme.Conscia"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        tools:ignore="MissingClass">
 
         <activity
             android:name=".MainActivity"
@@ -37,19 +38,19 @@
         </activity>
 
         <activity
-            android:name="com.example.conscia.presentation.intervention.IntentionPromptActivity"
-            android:theme="@style/Theme.Conscia"
+            android:name=".presentation.intervention.IntentionPromptActivity"
+            android:exported="false"
             android:launchMode="singleTop"
             android:excludeFromRecents="true"
-            android:exported="false" />
+            android:theme="@style/Theme.Conscia" />
 
         <activity
-            android:name="com.example.conscia.presentation.warning.UsageLimitWarningActivity"
-            android:theme="@style/Theme.Conscia"
+            android:name=".presentation.warning.UsageLimitWarningActivity"
+            android:exported="false"
             android:launchMode="singleTop"
             android:excludeFromRecents="true"
-            android:exported="false"
-            android:noHistory="true" />
+            android:noHistory="true"
+            android:theme="@style/Theme.Conscia" />
 
         <service
             android:name=".monitoring.AccessibilityForegroundAppService"

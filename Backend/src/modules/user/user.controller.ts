@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth('JWT-auth')
@@ -62,6 +63,26 @@ export class UserController {
     return {
       success: true,
       message: 'Profile updated successfully',
+      data: this.userService.toPublicUser(updatedUser),
+    };
+  }
+
+  @ApiOperation({ summary: 'Change current user password' })
+  @Patch('password')
+  async changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    const currentUser = this.requireUser(user);
+    const updatedUser = await this.userService.updatePassword(
+      currentUser.userId,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+
+    return {
+      success: true,
+      message: 'Password updated successfully',
       data: this.userService.toPublicUser(updatedUser),
     };
   }

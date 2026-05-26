@@ -1,5 +1,6 @@
 package com.example.conscia.ui.settings;
 
+import com.example.conscia.data.TrackedAppsDataStore;
 import com.example.conscia.data.remote.api.ConsciaApiService;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
@@ -25,20 +26,26 @@ import javax.inject.Provider;
 public final class ProfileViewModel_Factory implements Factory<ProfileViewModel> {
   private final Provider<ConsciaApiService> apiServiceProvider;
 
-  public ProfileViewModel_Factory(Provider<ConsciaApiService> apiServiceProvider) {
+  private final Provider<TrackedAppsDataStore> dataStoreProvider;
+
+  public ProfileViewModel_Factory(Provider<ConsciaApiService> apiServiceProvider,
+      Provider<TrackedAppsDataStore> dataStoreProvider) {
     this.apiServiceProvider = apiServiceProvider;
+    this.dataStoreProvider = dataStoreProvider;
   }
 
   @Override
   public ProfileViewModel get() {
-    return newInstance(apiServiceProvider.get());
+    return newInstance(apiServiceProvider.get(), dataStoreProvider.get());
   }
 
-  public static ProfileViewModel_Factory create(Provider<ConsciaApiService> apiServiceProvider) {
-    return new ProfileViewModel_Factory(apiServiceProvider);
+  public static ProfileViewModel_Factory create(Provider<ConsciaApiService> apiServiceProvider,
+      Provider<TrackedAppsDataStore> dataStoreProvider) {
+    return new ProfileViewModel_Factory(apiServiceProvider, dataStoreProvider);
   }
 
-  public static ProfileViewModel newInstance(ConsciaApiService apiService) {
-    return new ProfileViewModel(apiService);
+  public static ProfileViewModel newInstance(ConsciaApiService apiService,
+      TrackedAppsDataStore dataStore) {
+    return new ProfileViewModel(apiService, dataStore);
   }
 }

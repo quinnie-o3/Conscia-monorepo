@@ -1,6 +1,5 @@
 package com.example.conscia.ui.settings
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -46,6 +45,14 @@ fun EditProfileScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
+    LaunchedEffect(uiState.isResetFormVisible) {
+        if (!uiState.isResetFormVisible) {
+            oldPassword = ""
+            newPassword = ""
+            confirmPassword = ""
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -69,6 +76,7 @@ fun EditProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(topSectionHeight)
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f))
                     .padding(24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -77,7 +85,7 @@ fun EditProfileScreen(
                     modifier = Modifier
                         .size(100.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .background(MaterialTheme.colorScheme.surface)
                         .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
@@ -93,7 +101,7 @@ fun EditProfileScreen(
                             painter = painterResource(id = R.drawable.default_user_avt),
                             contentDescription = "Default Avatar",
                             modifier = Modifier.size(60.dp),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -105,7 +113,9 @@ fun EditProfileScreen(
                     text = uiState.user?.displayName ?: "Username",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2
                 )
             }
 
@@ -116,6 +126,8 @@ fun EditProfileScreen(
                     .padding(horizontal = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
                 // Email
                 OutlinedTextField(
                     value = uiState.user?.email ?: "",
@@ -128,7 +140,7 @@ fun EditProfileScreen(
 
                 // Password (Masked)
                 OutlinedTextField(
-                    value = "********", // Mock masked value
+                    value = "********",
                     onValueChange = {},
                     label = { Text("Password") },
                     modifier = Modifier.fillMaxWidth(),
@@ -147,17 +159,18 @@ fun EditProfileScreen(
 
                 // Reset Password Trigger
                 TextButton(
-                    onClick = { viewModel.toggleResetForm(!uiState.showResetForm) },
-                    modifier = Modifier.align(Alignment.Start)
+                    onClick = { viewModel.toggleResetForm() },
+                    modifier = Modifier.align(Alignment.Start),
+                    enabled = !uiState.isSaving
                 ) {
                     Text(
-                        text = if (uiState.showResetForm) "Cancel Reset" else "Reset Password",
+                        text = if (uiState.isResetFormVisible) "Cancel Reset" else "Reset Password",
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                if (uiState.showResetForm) {
+                if (uiState.isResetFormVisible) {
                     Divider()
                     Text("Update Password", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
@@ -185,7 +198,8 @@ fun EditProfileScreen(
                         label = { Text("Confirm New Password") },
                         modifier = Modifier.fillMaxWidth(),
                         visualTransformation = PasswordVisualTransformation(),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        isError = uiState.errorMessage?.contains("match") == true
                     )
                 }
 
@@ -198,9 +212,9 @@ fun EditProfileScreen(
                     )
                 }
 
-                if (uiState.resetSuccessMessage != null) {
+                if (uiState.successMessage != null) {
                     Text(
-                        text = uiState.resetSuccessMessage!!,
+                        text = uiState.successMessage!!,
                         color = Color(0xFF006654),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 4.dp)
@@ -211,20 +225,26 @@ fun EditProfileScreen(
 
                 Button(
                     onClick = {
-                        if (uiState.showResetForm) {
-                            viewModel.resetPassword(oldPassword, newPassword, confirmPassword)
-                        } else {
-                            // Logic for profile update if needed
+                        if (uiState.isResetFormVisible) {
+                            viewModel.updatePassword(oldPassword, newPassword, confirmPassword)
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(28.dp),
-                    enabled = !uiState.isSaving && (!uiState.showResetForm || (oldPassword.isNotBlank() && newPassword.isNotBlank() && confirmPassword.isNotBlank()))
+                    enabled = uiState.isResetFormVisible &&
+                        !uiState.isSaving &&
+                        oldPassword.isNotBlank() &&
+                        newPassword.isNotBlank() &&
+                        confirmPassword.isNotBlank()
                 ) {
                     if (uiState.isSaving) {
-                        CircularProgressIndicator(size = 24.dp, color = MaterialTheme.colorScheme.onPrimary)
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
                     } else {
                         Text("Save Change", fontWeight = FontWeight.Bold)
                     }
@@ -234,13 +254,4 @@ fun EditProfileScreen(
             Spacer(modifier = Modifier.height(40.dp))
         }
     }
-}
-
-@Composable
-private fun CircularProgressIndicator(size: androidx.compose.ui.unit.Dp, color: Color) {
-    androidx.compose.material3.CircularProgressIndicator(
-        modifier = Modifier.size(size),
-        color = color,
-        strokeWidth = 2.dp
-    )
 }

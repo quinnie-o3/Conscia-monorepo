@@ -32,7 +32,7 @@ data class TrackedAppDetailUiState(
     val isEditingLimit: Boolean = false,
     val isEditingReason: Boolean = false,
     val limitHours: String = "0",
-    val limitMinutes: String = "15",
+    val limitMinutes: String = "1",
     val reason: String = "",
     val errorMessage: String? = null
 ) {
@@ -119,8 +119,8 @@ class TrackedAppDetailViewModel @Inject constructor(
                         rule = rule,
                         todayUsageMillis = appUsageMillis,
                         todayLaunchCount = appLaunchCount,
-                        limitHours = ((rule?.dailyLimitMinutes ?: 15) / 60).toString(),
-                        limitMinutes = ((rule?.dailyLimitMinutes ?: 15) % 60).toString(),
+                        limitHours = ((rule?.dailyLimitMinutes ?: 1) / 60).toString(),
+                        limitMinutes = ((rule?.dailyLimitMinutes ?: 1) % 60).toString(),
                         reason = rule?.intentionLabel.orEmpty(),
                         isEditingLimit = false,
                         isEditingReason = false,

@@ -19,7 +19,7 @@ data class CreateEditRuleUiState(
     val selectedAppName: String = "",
     val intention: String = "",
     val limitHours: String = "00",
-    val limitMinutes: String = "15",
+    val limitMinutes: String = "01",
     val trackingEnabled: Boolean = true,
     val warningEnabled: Boolean = true,
     val isEditMode: Boolean = false,
@@ -36,7 +36,7 @@ data class CreateEditRuleUiState(
     val limitMinuteValue: Int = limitMinutes.toIntOrNull() ?: 0
     val isLimitValid: Boolean = limitHourValue in 0..23 &&
         limitMinuteValue in allowedMinuteValues &&
-        (limitHourValue * 60 + limitMinuteValue) >= 15
+        (limitHourValue * 60 + limitMinuteValue) >= 1
     val isFormValid: Boolean = isAppValid && isIntentionValid && isLimitValid
 
     companion object {
@@ -142,7 +142,7 @@ class CreateEditRuleViewModel @Inject constructor(
         _uiState.update { state ->
             var minute = state.limitMinuteValue
             if (normalizedHour == 0 && minute == 0) {
-                minute = 15
+                minute = 1
             }
             state.copy(
                 limitHours = normalizedHour.toTwoDigitString(),
@@ -154,7 +154,7 @@ class CreateEditRuleViewModel @Inject constructor(
     fun setLimitMinute(minute: Int) {
         val normalizedMinute = normalizeMinute(minute)
         _uiState.update { state ->
-            val safeMinute = if (state.limitHourValue == 0 && normalizedMinute == 0) 15 else normalizedMinute
+            val safeMinute = if (state.limitHourValue == 0 && normalizedMinute == 0) 1 else normalizedMinute
             state.copy(limitMinutes = safeMinute.toTwoDigitString())
         }
     }
@@ -179,12 +179,12 @@ class CreateEditRuleViewModel @Inject constructor(
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
 
             val totalMinutes = (state.limitHours.toIntOrNull() ?: 0) * 60 + (state.limitMinutes.toIntOrNull() ?: 0)
-            if (totalMinutes < 15 || state.limitHourValue !in 0..23 || state.limitMinuteValue !in CreateEditRuleUiState.allowedMinuteValues) {
+            if (totalMinutes < 1 || state.limitHourValue !in 0..23 || state.limitMinuteValue !in CreateEditRuleUiState.allowedMinuteValues) {
                 _uiState.update {
                     it.copy(
                         isSaving = false,
                         showErrors = true,
-                        errorMessage = "Limit must be between 00:15 and 23:59."
+                        errorMessage = "Limit must be between 00:01 and 23:59."
                     )
                 }
                 return@launch
