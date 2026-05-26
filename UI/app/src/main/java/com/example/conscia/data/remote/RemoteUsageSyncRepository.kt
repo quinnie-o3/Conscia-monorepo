@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
@@ -38,22 +39,39 @@ class RemoteUsageSyncRepository @Inject constructor(
         }
 
         val snapshots = usageRepository.getDailyUsageSnapshots(days)
-        if (snapshots.isEmpty()) {
+        val rulesByPackage = ruleRepository.allRules.first().associateBy { it.packageName }
+        val deviceId = resolveDeviceId()
+        val todayStartMillis = startOfTodayMillis()
+        val todayLocalDate = formatLocalDate(todayStartMillis)
+        val syncedTodayPackages = snapshots
+            .asSequence()
+            .filter { it.localDate == todayLocalDate }
+            .map { it.packageName }
+            .toSet()
+        val sessions = snapshots.map { snapshot ->
+            buildSessionPayload(
+                snapshot = snapshot,
+                deviceId = deviceId,
+                rule = rulesByPackage[snapshot.packageName]
+            )
+        } + rulesByPackage.values
+            .filter { it.trackingEnabled && it.packageName !in syncedTodayPackages }
+            .map { rule ->
+                buildZeroUsagePayload(
+                    rule = rule,
+                    deviceId = deviceId,
+                    localDate = todayLocalDate,
+                    dayStartMillis = todayStartMillis
+                )
+            }
+
+        if (sessions.isEmpty()) {
             return@withContext SyncSessionsResult()
         }
 
-        val rulesByPackage = ruleRepository.allRules.first().associateBy { it.packageName }
-        val deviceId = resolveDeviceId()
-        
         val payload = SyncSessionsBatchRequest(
             deviceId = deviceId,
-            sessions = snapshots.map { snapshot ->
-                buildSessionPayload(
-                    snapshot = snapshot,
-                    deviceId = deviceId,
-                    rule = rulesByPackage[snapshot.packageName]
-                )
-            }
+            sessions = sessions
         )
 
         val response = apiService.syncSessions(payload)
@@ -124,6 +142,47 @@ class RemoteUsageSyncRepository @Inject constructor(
             tags = intentionLabel?.let { listOf(it) } ?: emptyList(),
             isClassified = intentionLabel != null
         )
+    }
+
+    private fun buildZeroUsagePayload(
+        rule: RuleEntity,
+        deviceId: String,
+        localDate: String,
+        dayStartMillis: Long
+    ): SyncSessionPayload {
+        val timezone = TimeZone.getDefault()
+        val intentionLabel = rule.intentionLabel
+            .takeIf { rule.trackingEnabled && it.isNotBlank() }
+            ?.trim()
+        val dayStartIso = formatIsoUtc(dayStartMillis)
+
+        return SyncSessionPayload(
+            externalId = "$deviceId:${rule.packageName}:$localDate",
+            deviceId = deviceId,
+            packageName = rule.packageName,
+            appName = rule.appName,
+            startedAt = dayStartIso,
+            endedAt = dayStartIso,
+            durationSeconds = 0L,
+            deviceLocalDate = localDate,
+            deviceTimezone = timezone.id,
+            timezoneOffsetMinutes = timezone.getOffset(dayStartMillis) / (60 * 1000),
+            intentionLabel = intentionLabel,
+            trackingEnabled = rule.trackingEnabled,
+            warningEnabled = rule.warningEnabled,
+            dailyLimitMinutes = rule.dailyLimitMinutes,
+            tags = intentionLabel?.let { listOf(it) } ?: emptyList(),
+            isClassified = intentionLabel != null
+        )
+    }
+
+    private fun startOfTodayMillis(): Long {
+        return Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
     }
 
     private fun formatLocalDate(timeMillis: Long): String {

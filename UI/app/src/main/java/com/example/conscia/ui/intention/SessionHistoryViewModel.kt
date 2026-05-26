@@ -46,7 +46,7 @@ class SessionHistoryViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             }
             try {
-                runCatching { remoteUsageSyncRepository.syncRecentUsage(days = 1) }
+                runCatching { remoteUsageSyncRepository.syncRecentUsage() }
                 val deviceId = dataStore.deviceIdFlow.firstOrNull() ?: ""
                 val today = dateFormatter.format(Date())
                 val response = apiService.getDailyStats(deviceId, today)

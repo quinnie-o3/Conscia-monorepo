@@ -320,12 +320,19 @@ class AccessibilityForegroundAppService : AccessibilityService() {
         }
         PurposeGateStore.clear(this)
         promptPackageName = null
-        launchLimitWarning(
-            appName = appName,
-            usageText = TimeFormatters.formatDurationShort(usageMillis),
-            limitText = TimeFormatters.formatDurationShort(limitMillis)
-        )
         stopForegroundSession(forceUsageSync = true)
+
+        val usageText = TimeFormatters.formatDurationShort(usageMillis)
+        val limitText = TimeFormatters.formatDurationShort(limitMillis)
+        performGlobalAction(GLOBAL_ACTION_HOME)
+        serviceScope.launch(Dispatchers.Main) {
+            delay(250L)
+            launchLimitWarning(
+                appName = appName,
+                usageText = usageText,
+                limitText = limitText
+            )
+        }
     }
 
     private fun launchLimitWarning(appName: String, usageText: String, limitText: String) {

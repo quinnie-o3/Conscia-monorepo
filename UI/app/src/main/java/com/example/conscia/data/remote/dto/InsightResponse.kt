@@ -4,6 +4,7 @@ data class InsightResponse(
     val range: InsightRange = InsightRange(),
     val summary: InsightSummary = InsightSummary(),
     val details: List<InsightDetail> = emptyList(),
+    val apps: List<InsightAppUsage> = emptyList(),
     val topTrackedApp: TopTrackedApp? = null
 )
 
@@ -29,6 +30,13 @@ data class InsightDetail(
     val percentage: Double = 0.0,
     val colorCode: String = "#999999",
     val category: String = "OTHER"
+)
+
+data class InsightAppUsage(
+    val packageName: String = "",
+    val appName: String = "",
+    val totalDurationSeconds: Long = 0L,
+    val percentage: Double = 0.0
 )
 
 data class TopTrackedApp(

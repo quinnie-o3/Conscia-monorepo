@@ -48,6 +48,18 @@ describe('StatsService', () => {
             tagName: 'Other',
           },
         ],
+        apps: [
+          {
+            appName: 'YouTube',
+            packageName: 'com.google.android.youtube',
+            totalDurationSeconds: 5400,
+          },
+          {
+            appName: 'Chrome',
+            packageName: 'com.android.chrome',
+            totalDurationSeconds: 600,
+          },
+        ],
         summary: [
           {
             totalSeconds: 6000,
@@ -69,8 +81,8 @@ describe('StatsService', () => {
       },
     ]);
     trackingRuleService.findActiveRules.mockResolvedValue([
-      { packageName: 'com.google.android.youtube' },
-      { packageName: 'com.example.docs' },
+      { packageName: 'com.google.android.youtube', trackingEnabled: true },
+      { packageName: 'com.example.docs', trackingEnabled: true },
     ]);
 
     const result = await service.getUsageByPurpose(
@@ -88,6 +100,20 @@ describe('StatsService', () => {
       'device-1',
     );
     expect(result).toEqual({
+      apps: [
+        {
+          appName: 'YouTube',
+          packageName: 'com.google.android.youtube',
+          percentage: 90,
+          totalDurationSeconds: 5400,
+        },
+        {
+          appName: 'Chrome',
+          packageName: 'com.android.chrome',
+          percentage: 10,
+          totalDurationSeconds: 600,
+        },
+      ],
       details: [
         {
           category: 'TRACKED',
@@ -138,5 +164,51 @@ describe('StatsService', () => {
         'Invalid/Timezone',
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('returns zero usage for tracked apps missing from the current daily sessions', async () => {
+    usageSessionService.findByDate.mockResolvedValue([]);
+    trackingRuleService.findActiveRules.mockResolvedValue([
+      {
+        appName: 'YouTube',
+        dailyLimitMinutes: 30,
+        intentionLabel: 'Study',
+        packageName: 'com.google.android.youtube',
+        trackingEnabled: true,
+        warningEnabled: true,
+      },
+    ]);
+
+    const result = await service.getDailySummary(
+      undefined,
+      'device-1',
+      '2026-05-26',
+    );
+
+    expect(usageSessionService.findByDate).toHaveBeenCalledWith(
+      undefined,
+      'device-1',
+      '2026-05-26',
+      undefined,
+    );
+    expect(result).toEqual({
+      byApp: [
+        {
+          appName: 'YouTube',
+          durationSeconds: 0,
+          isExceeded: false,
+          limitMinutes: 30,
+          packageName: 'com.google.android.youtube',
+          purposeTag: 'Study',
+          usedMinutes: 0,
+        },
+      ],
+      byPurpose: [],
+      date: '2026-05-26',
+      limitWarnings: [],
+      totalDurationSeconds: 0,
+      totalTrackedMinutes: 0,
+      totalUsedMinutes: 0,
+    });
   });
 });

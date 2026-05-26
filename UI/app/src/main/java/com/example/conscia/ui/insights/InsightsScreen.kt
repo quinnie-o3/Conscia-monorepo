@@ -31,7 +31,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,8 +38,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -51,6 +51,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.conscia.ui.dashboard.PermissionRequiredView
+import com.example.conscia.ui.theme.appUsageChartColor
 import com.example.conscia.ui.theme.tintedSurface
 import com.example.conscia.util.TimeFormatters
 import kotlinx.coroutines.delay
@@ -118,40 +119,22 @@ private fun InsightsContent(
                 ) {
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Insights",
-                                    style = MaterialTheme.typography.displaySmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = if (uiState.lastUpdatedLabel.isBlank()) {
-                                        "Refreshes every 15s while this screen is open"
-                                    } else {
-                                        "Last updated ${uiState.lastUpdatedLabel} | refreshes every 15s"
-                                    },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            Surface(
-                                color = colorScheme.tintedSurface(colorScheme.primary),
-                                shape = RoundedCornerShape(20.dp)
-                            ) {
-                                Text(
-                                    text = "Live",
-                                    color = colorScheme.primary,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                                )
-                            }
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = "Insights",
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = if (uiState.lastUpdatedLabel.isBlank()) {
+                                    "Refreshes every 15s while this screen is open"
+                                } else {
+                                    "Last updated ${uiState.lastUpdatedLabel} | refreshes every 15s"
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colorScheme.onSurfaceVariant
+                            )
                         }
                     }
 
@@ -212,56 +195,58 @@ private fun InsightsContent(
                     }
 
                     item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            InsightsDonutChart(
-                                purposefulPercent = uiState.purposefulPercent,
-                                trackedAppsCount = uiState.trackedAppsCount
-                            )
-
-                            Spacer(modifier = Modifier.width(20.dp))
-
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                InsightMetric(
-                                    label = "Rules usage",
-                                    value = TimeFormatters.formatDurationShort(uiState.purposefulUsageMillis),
-                                    valueColor = colorScheme.primary
-                                )
-                                HorizontalDivider(color = colorScheme.outlineVariant)
-                                InsightMetric(
-                                    label = "Avg / day",
-                                    value = TimeFormatters.formatDurationShort(uiState.averageDailyUsageMillis),
-                                    valueColor = colorScheme.secondary
-                                )
-                                HorizontalDivider(color = colorScheme.outlineVariant)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.Schedule,
-                                        null,
-                                        tint = colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(20.dp)
+                                InsightsDonutChart(rankings = uiState.appUsageRankings)
+
+                                Spacer(modifier = Modifier.width(20.dp))
+
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    InsightMetric(
+                                        label = "Rules usage",
+                                        value = TimeFormatters.formatDurationShort(uiState.purposefulUsageMillis),
+                                        valueColor = colorScheme.primary
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Column {
-                                        Text(
-                                            text = "Other usage",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = colorScheme.onSurfaceVariant
+                                    HorizontalDivider(color = colorScheme.outlineVariant)
+                                    InsightMetric(
+                                        label = "Avg / day",
+                                        value = TimeFormatters.formatDurationShort(uiState.averageDailyUsageMillis),
+                                        valueColor = colorScheme.secondary
+                                    )
+                                    HorizontalDivider(color = colorScheme.outlineVariant)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.Schedule,
+                                            null,
+                                            tint = colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp)
                                         )
-                                        Text(
-                                            text = TimeFormatters.formatDurationShort(uiState.otherUsageMillis),
-                                            style = MaterialTheme.typography.headlineSmall,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = colorScheme.onSurface
-                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text(
+                                                text = "Other usage",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                text = TimeFormatters.formatDurationShort(uiState.otherUsageMillis),
+                                                style = MaterialTheme.typography.headlineSmall,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = colorScheme.onSurface
+                                            )
+                                        }
                                     }
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(18.dp))
+                            AppUsageLegend(rankings = uiState.appUsageRankings)
                         }
                     }
 
@@ -356,7 +341,7 @@ private fun AppUsageBarChart(rankings: List<AppUsageRanking>) {
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
-                rankings.forEach { app ->
+                rankings.forEachIndexed { index, app ->
                     val ratio = app.usageMillis.toFloat() / maxUsageMillis.toFloat()
                     val barHeight = (150.dp.value * ratio.coerceIn(0.04f, 1f)).dp
 
@@ -366,10 +351,11 @@ private fun AppUsageBarChart(rankings: List<AppUsageRanking>) {
                         verticalArrangement = Arrangement.Bottom
                     ) {
                         Text(
-                            text = TimeFormatters.formatDurationShort(app.usageMillis),
+                            text = "${TimeFormatters.formatDurationShort(app.usageMillis)} | ${app.usagePercent}%",
                             style = MaterialTheme.typography.labelSmall,
                             color = colorScheme.onSurfaceVariant,
-                            maxLines = 1
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Box(
@@ -377,7 +363,7 @@ private fun AppUsageBarChart(rankings: List<AppUsageRanking>) {
                                 .fillMaxWidth()
                                 .height(barHeight)
                                 .background(
-                                    colorScheme.primary,
+                                    appUsageChartColor(index),
                                     RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
                                 )
                         )
@@ -412,6 +398,56 @@ private fun AppUsageBarChart(rankings: List<AppUsageRanking>) {
 }
 
 @Composable
+private fun AppUsageLegend(rankings: List<AppUsageRanking>) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    if (rankings.isEmpty()) {
+        Text(
+            text = "No weekly app usage to calculate yet.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colorScheme.onSurfaceVariant
+        )
+        return
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        rankings.forEachIndexed { index, app ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(appUsageChartColor(index), RoundedCornerShape(2.dp))
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = app.appName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "${app.usagePercent}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = TimeFormatters.formatDurationShort(app.usageMillis),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun InsightMetric(label: String, value: String, valueColor: Color) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -431,10 +467,9 @@ private fun InsightMetric(label: String, value: String, valueColor: Color) {
 }
 
 @Composable
-private fun InsightsDonutChart(purposefulPercent: Int, trackedAppsCount: Int) {
+private fun InsightsDonutChart(rankings: List<AppUsageRanking>) {
     val colorScheme = MaterialTheme.colorScheme
-    val clampedPercent = purposefulPercent.coerceIn(0, 100)
-    val sweepAngle = clampedPercent / 100f * 360f
+    val hasUsage = rankings.any { it.usageMillis > 0L }
 
     Box(
         modifier = Modifier.size(160.dp),
@@ -442,35 +477,52 @@ private fun InsightsDonutChart(purposefulPercent: Int, trackedAppsCount: Int) {
     ) {
         Canvas(modifier = Modifier.size(120.dp)) {
             val strokeWidth = 20.dp.toPx()
+            val radius = (size.minDimension - strokeWidth) / 2f
+            val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+            val topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f)
+
             drawCircle(
                 color = colorScheme.surfaceVariant,
+                radius = radius,
                 style = Stroke(width = strokeWidth)
             )
 
-            when {
-                sweepAngle >= 360f -> drawCircle(
-                    color = colorScheme.primary,
-                    style = Stroke(width = strokeWidth)
-                )
+            if (hasUsage) {
+                var startAngle = -90f
+                var consumedAngle = 0f
+                rankings.forEachIndexed { index, app ->
+                    val sweepAngle = if (index == rankings.lastIndex) {
+                        360f - consumedAngle
+                    } else {
+                        app.usagePercent.coerceAtLeast(0) / 100f * 360f
+                    }
 
-                sweepAngle > 0f -> drawArc(
-                    color = colorScheme.primary,
-                    startAngle = -90f,
-                    sweepAngle = sweepAngle,
-                    useCenter = false,
-                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                )
+                    if (sweepAngle > 0f) {
+                        drawArc(
+                            color = appUsageChartColor(index),
+                            startAngle = startAngle,
+                            sweepAngle = sweepAngle,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = arcSize,
+                            style = Stroke(width = strokeWidth)
+                        )
+                    }
+
+                    startAngle += sweepAngle
+                    consumedAngle += sweepAngle
+                }
             }
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "${clampedPercent}%",
+                text = if (hasUsage) "100%" else "0%",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = if (trackedAppsCount == 0) "No rules" else "Rules",
+                text = "Apps",
                 fontSize = 12.sp,
                 color = colorScheme.onSurfaceVariant
             )

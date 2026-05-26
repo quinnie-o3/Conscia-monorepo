@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.conscia.MainActivity
 import com.example.conscia.R
+import com.example.conscia.presentation.warning.UsageLimitWarningActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -36,8 +37,13 @@ class ConsciaNotificationManager @Inject constructor(@ApplicationContext private
     }
 
     fun showExceededNotification(appName: String, usageStr: String, limitStr: String, packageName: String) {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        val intent = Intent(context, UsageLimitWarningActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(UsageLimitWarningActivity.EXTRA_APP_NAME, appName)
+            putExtra(UsageLimitWarningActivity.EXTRA_USAGE_TEXT, usageStr)
+            putExtra(UsageLimitWarningActivity.EXTRA_LIMIT_TEXT, limitStr)
         }
         val pendingIntent: PendingIntent = PendingIntent.getActivity(
             context, packageName.hashCode(), intent, 
@@ -49,7 +55,10 @@ class ConsciaNotificationManager @Inject constructor(@ApplicationContext private
             .setContentTitle("Bạn đã chạm mức sử dụng")
             .setContentText("$appName đã dùng $usageStr hôm nay, vượt giới hạn $limitStr.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
+            .setFullScreenIntent(pendingIntent, true)
             .setAutoCancel(true)
 
         try {

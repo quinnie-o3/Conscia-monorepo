@@ -390,6 +390,11 @@ export class StatsService {
               },
             },
             {
+              $match: {
+                duration: { $gt: 0 },
+              },
+            },
+            {
               $project: {
                 _id: 0,
                 category: '$_id.category',
@@ -401,6 +406,37 @@ export class StatsService {
               $sort: {
                 duration: -1,
                 tagName: 1,
+              },
+            },
+          ],
+          apps: [
+            {
+              $group: {
+                _id: {
+                  appName: '$resolvedAppName',
+                  packageName: '$packageName',
+                },
+                totalDurationSeconds: { $sum: '$durationSeconds' },
+              },
+            },
+            {
+              $match: {
+                totalDurationSeconds: { $gt: 0 },
+              },
+            },
+            {
+              $sort: {
+                totalDurationSeconds: -1,
+                '_id.appName': 1,
+                '_id.packageName': 1,
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                appName: '$_id.appName',
+                packageName: '$_id.packageName',
+                totalDurationSeconds: 1,
               },
             },
           ],
@@ -557,14 +593,14 @@ export class StatsService {
       }
     }
 
-    const byPurpose = Array.from(byPurposeMap.entries()).map(
-      ([purposeTag, durationSeconds]) => ({
+    const byPurpose = Array.from(byPurposeMap.entries())
+      .filter(([, durationSeconds]) => durationSeconds > 0)
+      .map(([purposeTag, durationSeconds]) => ({
         durationSeconds,
         percentage: this.roundPercentage(durationSeconds, totalDurationSeconds),
         purposeTag,
         usedMinutes: Math.round(durationSeconds / 60),
-      }),
-    );
+      }));
 
     const byApp = Array.from(byAppMap.values())
       .map((app) => {
@@ -585,6 +621,29 @@ export class StatsService {
         };
       })
       .sort((left, right) => right.durationSeconds - left.durationSeconds);
+
+    for (const rule of rules) {
+      if (!rule.trackingEnabled) {
+        continue;
+      }
+
+      if (byAppMap.has(rule.packageName)) {
+        continue;
+      }
+
+      byApp.push({
+        appName: rule.appName,
+        durationSeconds: 0,
+        isExceeded: false,
+        limitMinutes: rule.dailyLimitMinutes ?? null,
+        packageName: rule.packageName,
+        purposeTag:
+          normalizeOptionalString(rule.intentionLabel) ||
+          normalizeOptionalString(rule.purposeTag) ||
+          'Tracked',
+        usedMinutes: 0,
+      });
+    }
 
     const limitWarnings = byApp
       .filter((app) => app.isExceeded)
@@ -653,6 +712,7 @@ export class StatsService {
     const otherSeconds = Math.max(totalSeconds - trackedSeconds, 0);
     const trackedPackagesSeen =
       result.trackedPackages[0]?.packages?.length || 0;
+    const trackedRuleCount = rules.filter((rule) => rule.trackingEnabled).length;
     const details = result.details.map(
       (detail: {
         category: UsageCategory;
@@ -666,9 +726,22 @@ export class StatsService {
         tagName: detail.tagName,
       }),
     );
+    const apps = (result.apps || []).map(
+      (app: {
+        appName: string;
+        packageName: string;
+        totalDurationSeconds: number;
+      }) => ({
+        appName: app.appName,
+        packageName: app.packageName,
+        percentage: this.roundPercentage(app.totalDurationSeconds, totalSeconds),
+        totalDurationSeconds: app.totalDurationSeconds,
+      }),
+    );
     const topTrackedApp = result.topTrackedApp[0] || null;
 
     return {
+      apps,
       details,
       range: {
         dayCount: range.dayCount,
@@ -685,7 +758,7 @@ export class StatsService {
           totalSeconds,
         ),
         totalSeconds,
-        trackedAppsCount: Math.max(rules.length, trackedPackagesSeen),
+        trackedAppsCount: Math.max(trackedRuleCount, trackedPackagesSeen),
         trackedSeconds,
       },
       topTrackedApp,
