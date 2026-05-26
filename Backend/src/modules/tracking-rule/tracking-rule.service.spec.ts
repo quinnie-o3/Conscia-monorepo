@@ -43,8 +43,24 @@ describe('TrackingRuleService', () => {
 
     expect(findOneAndUpdate).toHaveBeenCalledWith(
       {
-        userId: 'user-1',
-        packageName: 'com.google.android.youtube',
+        $or: [
+          {
+            userId: 'user-1',
+            packageName: 'com.google.android.youtube',
+          },
+          {
+            anonymousUserId: 'anon-1',
+            deviceId: 'device-1',
+            packageName: 'com.google.android.youtube',
+            userId: null,
+          },
+          {
+            anonymousUserId: 'anon-1',
+            deviceId: 'device-1',
+            packageName: 'com.google.android.youtube',
+            userId: { $exists: false },
+          },
+        ],
       },
       {
         $set: {

@@ -199,6 +199,64 @@ export class AuthService {
     return undefined;
   }
 
+  private async migrateAnonymousRules(
+    userId: string,
+    deviceId: string,
+    anonymousUserId: string,
+  ) {
+    const anonymousRules = await this.trackingRuleModel
+      .find({
+        deviceId,
+        $or: [{ userId: null }, { userId: { $exists: false } }],
+      })
+      .exec();
+
+    let migratedRules = 0;
+
+    for (const rule of anonymousRules) {
+      const existingUserRule = await this.trackingRuleModel
+        .findOne({
+          packageName: rule.packageName,
+          userId,
+        })
+        .exec();
+
+      const ruleUpdate = {
+        anonymousUserId,
+        appName: rule.appName,
+        deviceId,
+        extensionCount: rule.extensionCount,
+        extensionMinutes: rule.extensionMinutes,
+        intentionLabel: rule.intentionLabel,
+        lastExtensionDate: rule.lastExtensionDate,
+        packageName: rule.packageName,
+        purposeTag: rule.purposeTag,
+        dailyLimitMinutes: rule.dailyLimitMinutes,
+        trackingEnabled: rule.trackingEnabled,
+        userId,
+        warningEnabled: rule.warningEnabled,
+      };
+
+      if (existingUserRule) {
+        await this.trackingRuleModel
+          .updateOne({ _id: existingUserRule._id }, { $set: ruleUpdate })
+          .exec();
+
+        if (String(existingUserRule._id) !== String(rule._id)) {
+          await this.trackingRuleModel.deleteOne({ _id: rule._id }).exec();
+        }
+      } else {
+        await this.trackingRuleModel
+          .updateOne({ _id: rule._id }, { $set: ruleUpdate })
+          .exec();
+      }
+
+      migratedRules += 1;
+    }
+
+    return migratedRules;
+  }
+
   async migrateAnonymousData(userId: string, tempDeviceId?: string) {
     const normalizedTempDeviceId = normalizeOptionalString(tempDeviceId);
 
@@ -215,26 +273,17 @@ export class AuthService {
         normalizedTempDeviceId,
       );
 
-    const [ruleResult, sessionResult] = await Promise.all([
-      this.trackingRuleModel
-        .updateMany(
-          {
-            deviceId: normalizedTempDeviceId,
-            userId: null,
-          },
-          {
-            $set: {
-              anonymousUserId,
-              userId,
-            },
-          },
-        )
-        .exec(),
+    const [migratedRules, sessionResult] = await Promise.all([
+      this.migrateAnonymousRules(
+        userId,
+        normalizedTempDeviceId,
+        anonymousUserId,
+      ),
       this.usageSessionModel
         .updateMany(
           {
             clientDeviceId: normalizedTempDeviceId,
-            userId: null,
+            $or: [{ userId: null }, { userId: { $exists: false } }],
           },
           {
             $set: {
@@ -267,7 +316,7 @@ export class AuthService {
 
     return {
       migratedDevices: device ? 1 : 0,
-      migratedRules: ruleResult.modifiedCount,
+      migratedRules,
       migratedSessions: sessionResult.modifiedCount,
     };
   }

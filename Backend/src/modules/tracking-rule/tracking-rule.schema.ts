@@ -52,7 +52,7 @@ TrackingRuleSchema.index(
   { userId: 1, packageName: 1 },
   {
     partialFilterExpression: {
-      userId: { $exists: true },
+      userId: { $exists: true, $type: 'objectId' },
     },
     unique: true,
   },

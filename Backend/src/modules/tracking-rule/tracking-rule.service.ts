@@ -52,8 +52,24 @@ export class TrackingRuleService {
 
     return this.trackingRuleModel.findOneAndUpdate(
       {
-        userId,
-        packageName: dto.packageName,
+        $or: [
+          {
+            userId,
+            packageName: dto.packageName,
+          },
+          {
+            anonymousUserId,
+            deviceId: dto.deviceId,
+            packageName: dto.packageName,
+            userId: null,
+          },
+          {
+            anonymousUserId,
+            deviceId: dto.deviceId,
+            packageName: dto.packageName,
+            userId: { $exists: false },
+          },
+        ],
       },
       {
         $set: {
